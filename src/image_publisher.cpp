@@ -58,6 +58,7 @@ sensor_msgs::msg::Image::SharedPtr create_image(
 
 void pub_images(rclcpp::Node::SharedPtr node,
         const std::string &image_directory) {
+  RCLCPP_INFO(node->get_logger(), "images directory: %s", image_directory.c_str());
   auto image_publisher = node->create_publisher<sensor_msgs::msg::Image>(
           "/image_raw", 5);
   std::vector<std::string> images;
@@ -87,6 +88,7 @@ int main(int argc, char **argv) {
             "\t$ ros2 run mono3d_indoor_detection image_publisher <directory>");
     return -1;
   }
+
   pub_images(std::make_shared<rclcpp::Node>("image_publisher"),
           std::string(argv[1]));
 }

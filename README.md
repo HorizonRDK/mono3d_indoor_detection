@@ -134,7 +134,7 @@ colcon build --packages-select mono3d_indoor_detection \
 | 参数名                 | 类型        | 解释                                        | 是否必须 | 支持的配置           | 默认值                        |
 | ---------------------- | ----------- | ------------------------------------------- | -------- | -------------------- | ----------------------------- |
 | is_sync_mode           | int         | 同步/异步推理模式。0：异步模式；1：同步模式 | 否       | 0/1                  | 0                             |
-| model_file_name        | std::string | 推理使用的模型文件                          | 否       | 根据实际模型路径配置 | config/handLMKs.hbm           |
+| model_file_name        | std::string | 推理使用的模型文件                          | 否       | 根据实际模型路径配置 | config/centernet.hbm           |
 | ai_msg_pub_topic_name  | std::string | 发布包含3D检测结果的AI消息的topic名 | 是       | 根据实际部署环境配置 | /ai_msg_3d_detection |
 | image_sub_topic_name | std::string | 订阅sensor_msgs::msg::Image     | 是       | 根据实际部署环境配置 | /image_raw     |
 
@@ -155,6 +155,20 @@ cp -r install/lib/mono3d_indoor_detection/config/ .
 ros2 run mono3d_indoor_detection mono3d_indoor_detection &
 # 启动图片发布node
 ros2 run mono3d_indoor_detection image_publisher ./config/images/
+
+```
+
+### **Ubuntu Launch启动**
+
+```
+export COLCON_CURRENT_PREFIX=./install
+source ./install/setup.bash
+# config中为示例使用的模型，根据实际安装路径进行拷贝
+# 如果是板端编译（无--merge-install编译选项），拷贝命令为cp -r install/PKG_NAME/lib/PKG_NAME/config/ .，其中PKG_NAME为具体的package名。
+cp -r install/lib/mono3d_indoor_detection/config/ .
+
+# 启动3D检测 package
+ros2 launch mono3d_indoor_detection mono3d_indoor_detection.launch.py 
 
 ```
 

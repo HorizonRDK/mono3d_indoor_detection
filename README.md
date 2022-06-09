@@ -1,8 +1,7 @@
 # 功能介绍
 
-mono3d_indoor_detection package是使用hobot_dnn package开发的室内物体3D检测算法示例，
-在地平线X3开发板上使用3D检测模型和室内数据利用BPU处理器进行模型推理。
-package订阅sensors/msg/Image(encoding必须为“nv12”)类型的话题，检测出物体的类别以及3D定位信息，并通过话题发布。
+mono3d_indoor_detection package是使用hobot_dnn package开发的室内物体3D检测算法示例，在地平线旭日X3开发板上使用3D检测模型和室内数据利用BPU处理器进行模型推理。
+3D检测模型与sensor以及sensor参数相关，在不同sensor不同参数情况下展示出来的效果不一样，因此本package并不直接订阅sensors/msg/Image类型的话题，而是通过读取本地图片发布/image_raw，package内部再订阅图片的形式对图片进行推理，检测出物体的类别以及3D定位信息，并通过话题发布。
 
 算法支持的室内物体检测类别如下：
 
@@ -11,8 +10,9 @@ package订阅sensors/msg/Image(encoding必须为“nv12”)类型的话题，检
 2. 垃圾桶
 3. 拖鞋
 ```
-每个类别包含长、宽、高、转向以及深度等信息。package对外发布包含3D检测信息的ai msg，用户可以订阅发布的ai msg用于应用开发。
-完整的ai msg描述如下所示：
+每个类别包含长、宽、高、转向以及深度等信息。package对外发布包含3D检测信息的AI Msg，用户可以订阅发布的AI Msg用于应用开发。
+完整的AI Msg描述如下所示：
+
 ````
 # 目标消息
 
@@ -27,7 +27,7 @@ uint64 track_id
 Roi[] rois
 
 # 属性信息，attributes包括 type 和 value 字段。
-  value字段在发布时乘了1000的系数，实际使用时，务！必！除以1000
+# value字段在发布时乘了1000的系数，实际使用时，务！必！除以1000
 Attribute[] attributes
 Attribute[]数组包括以下信息：
 type    description
@@ -73,9 +73,11 @@ ros package：
 - ai_msgs
 - OpenCV
 
-dnn_node是在地平线X3开发板上利用BPU处理器进行模型推理的pkg，定义在hobot_dnn中。
+dnn_node是在地平线旭日X3开发板上利用BPU处理器进行模型推理的package，定义在hobot_dnn中。
 
-ai_msgs为自定义的消息格式，用于算法模型推理后，发布推理结果，ai_msgs pkg定义在hobot_msgs中。
+ai_msgs为自定义的消息格式，用于算法模型推理后，发布推理结果，ai_msgs package定义在hobot_msgs中。
+
+OpenCV用于图像处理。
 
 ## 开发环境
 
@@ -96,7 +98,7 @@ ai_msgs为自定义的消息格式，用于算法模型推理后，发布推理�
    - 已安装ROS2编译工具colcon，安装命令：`pip install -U colcon-common-extensions`
 2. 编译
 
-编译命令：`colcon build --packages-select mono3d_indoor_detection`
+ 编译命令：`colcon build --packages-select mono3d_indoor_detection`
 
 ### Docker交叉编译
 
@@ -134,13 +136,13 @@ colcon build --packages-select mono3d_indoor_detection \
 | 参数名                 | 类型        | 解释                                        | 是否必须 | 支持的配置           | 默认值                        |
 | ---------------------- | ----------- | ------------------------------------------- | -------- | -------------------- | ----------------------------- |
 | is_sync_mode           | int         | 同步/异步推理模式。0：异步模式；1：同步模式 | 否       | 0/1                  | 0                             |
-| model_file_name        | std::string | 推理使用的模型文件                          | 否       | 根据实际模型路径配置 | config/centernet.hbm           |
+| config_file_path | std::string | 推理使用的配置文件路径，内含模型文件               | 否       | 根据实际路径配置 | ./config       |
 | ai_msg_pub_topic_name  | std::string | 发布包含3D检测结果的AI消息的topic名 | 是       | 根据实际部署环境配置 | /ai_msg_3d_detection |
 | image_sub_topic_name | std::string | 订阅sensor_msgs::msg::Image     | 是       | 根据实际部署环境配置 | /image_raw     |
 
 ## 运行
 
-编译成功后，将生成的install路径拷贝到地平线X3开发板上（如果是在X3上编译，忽略拷贝步骤），并执行如下命令运行：
+编译成功后，将生成的install路径拷贝到地平线旭日X3开发板上（如果是在X3上编译，忽略拷贝步骤），并执行如下命令运行：
 
 ### **Ubuntu**
 

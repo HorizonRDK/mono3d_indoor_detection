@@ -195,25 +195,26 @@ cp -r install/lib/mono3d_indoor_detection/config/ .
 ## X3结果展示
 
 ```
-[INFO] [1653655461.402558532] [ai_msg_cb]: target type: slipper
-[INFO] [1653655461.402727573] [ai_msg_cb]: attribute type: width, value: 0.105
-[INFO] [1653655461.402782698] [ai_msg_cb]: attribute type: height, value: 0.105
-[INFO] [1653655461.402833490] [ai_msg_cb]: attribute type: length, value: 0.256
-[INFO] [1653655461.402882615] [ai_msg_cb]: attribute type: rotation, value: 0.233
-[INFO] [1653655461.402932948] [ai_msg_cb]: attribute type: x, value: -0.001
-[INFO] [1653655461.402981698] [ai_msg_cb]: attribute type: y, value: -0.021
-[INFO] [1653655461.403030448] [ai_msg_cb]: attribute type: z, value: 0.596
-[INFO] [1653655461.403079157] [ai_msg_cb]: attribute type: depth, value: 0.596
-[INFO] [1653655461.403128115] [ai_msg_cb]: attribute type: score, value: 0.812
-[INFO] [1653655461.403174032] [ai_msg_cb]: point type: corners
-[INFO] [1653655461.403232448] [ai_msg_cb]: x: 1135.99 y: 575.944
-[INFO] [1653655461.403286490] [ai_msg_cb]: x: 1133.35 y: 583.35
-[INFO] [1653655461.403339782] [ai_msg_cb]: x: 792.333 y: 578.721
-[INFO] [1653655461.403393240] [ai_msg_cb]: x: 846.214 y: 572.665
-[INFO] [1653655461.403446448] [ai_msg_cb]: x: 1135.99 y: 448.325
-[INFO] [1653655461.403499573] [ai_msg_cb]: x: 1133.35 y: 430.423
-[INFO] [1653655461.403553073] [ai_msg_cb]: x: 792.333 y: 441.612
-[INFO] [1653655461.403606282] [ai_msg_cb]: x: 846.214 y: 456.252
+[INFO] [1654858490.168592166] [mono3d_detection]: target type: trash_can
+[INFO] [1654858490.168644750] [mono3d_detection]: target type: width, value: 236.816406
+[INFO] [1654858490.168704333] [mono3d_detection]: target type: height, value: 305.664062
+[INFO] [1654858490.168759584] [mono3d_detection]: target type: length, value: 224.182129
+[INFO] [1654858490.168812334] [mono3d_detection]: target type: rotation, value: -1571.989179
+[INFO] [1654858490.168862543] [mono3d_detection]: target type: x, value: -191.977829
+[INFO] [1654858490.168916168] [mono3d_detection]: target type: y, value: -143.963307
+[INFO] [1654858490.168966502] [mono3d_detection]: target type: z, value: 714.024127
+[INFO] [1654858490.169016794] [mono3d_detection]: target type: depth, value: 714.024127
+[INFO] [1654858490.169067461] [mono3d_detection]: target type: score, value: 0.973215
+[INFO] [1654858490.169168795] [mono3d_detection]: target type: trash_can
+[INFO] [1654858490.169212837] [mono3d_detection]: target type: width, value: 253.051758
+[INFO] [1654858490.169265004] [mono3d_detection]: target type: height, value: 282.348633
+[INFO] [1654858490.169317046] [mono3d_detection]: target type: length, value: 257.934570
+[INFO] [1654858490.169368921] [mono3d_detection]: target type: rotation, value: -1542.727947
+[INFO] [1654858490.169418671] [mono3d_detection]: target type: x, value: 552.459776
+[INFO] [1654858490.169470588] [mono3d_detection]: target type: y, value: -164.073169
+[INFO] [1654858490.169517505] [mono3d_detection]: target type: z, value: 1088.358164
+[INFO] [1654858490.169566839] [mono3d_detection]: target type: depth, value: 1088.358164
+[INFO] [1654858490.169616464] [mono3d_detection]: target type: score, value: 0.875521
 ```
 以上log截取了一帧的处理结果，结果显示，订阅到的ai msg中的target type即分类结果为slipper，
 同时也给出了slipper的三维和距离以及旋转角度信息。

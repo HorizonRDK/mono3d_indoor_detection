@@ -216,8 +216,8 @@ cp -r install/lib/mono3d_indoor_detection/config/ .
 [INFO] [1654858490.169566839] [mono3d_detection]: target type: depth, value: 1088.358164
 [INFO] [1654858490.169616464] [mono3d_detection]: target type: score, value: 0.875521
 ```
-以上log截取了一帧的处理结果，结果显示，订阅到的ai msg中的target type即分类结果为slipper，
-同时也给出了slipper的三维和距离以及旋转角度信息。
+以上log截取了一帧的处理结果，结果显示，订阅到的ai msg中的target type即分类结果为trash_can，
+同时也给出了trash_can的三维和距离以及旋转角度信息。
 
 
 

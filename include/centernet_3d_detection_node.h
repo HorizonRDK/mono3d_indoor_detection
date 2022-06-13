@@ -79,9 +79,10 @@ class CenterNet3DDetectionNode : public DnnNode {
 
  private:
   // 输入参数
-  std::string config_file_path_ = "config/";
+  std::string config_file_path_ = "./config";
   int is_sync_mode_ = 1;
   int shared_mem_ = 0;
+  std::string feed_image_ = "./config/images/3d_detection.png";
 
   std::string model_file_name_ = "config/centernet.hbm";
   std::string model_name_ = "centernet";

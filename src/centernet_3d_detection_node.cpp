@@ -38,14 +38,19 @@ CenterNet3DDetectionNode::CenterNet3DDetectionNode(const std::string &node_name,
   this->declare_parameter<int>("is_sync_mode", is_sync_mode_);
   this->declare_parameter<std::string>("config_file_path", config_file_path_);
   this->declare_parameter<int>("shared_mem", shared_mem_);
-  this->declare_parameter<std::string>("ai_msg_pub_topic_name", msg_pub_topic_name_);
-  this->declare_parameter<std::string>("image_sub_topic_name", ros_img_topic_name_);
+  this->declare_parameter<std::string>("ai_msg_pub_topic_name",
+                                       msg_pub_topic_name_);
+  this->declare_parameter<std::string>("image_sub_topic_name",
+                                       ros_img_topic_name_);
+  this->declare_parameter<std::string>("feed_image", feed_image_);
 
   this->get_parameter<int>("is_sync_mode", is_sync_mode_);
   this->get_parameter<std::string>("config_file_path", config_file_path_);
   this->get_parameter<int>("shared_mem", shared_mem_);
-  this->get_parameter<std::string>("ai_msg_pub_topic_name", msg_pub_topic_name_);
+  this->get_parameter<std::string>("ai_msg_pub_topic_name",
+                                   msg_pub_topic_name_);
   this->get_parameter<std::string>("image_sub_topic_name", ros_img_topic_name_);
+  this->get_parameter<std::string>("feed_image", feed_image_);
 
   model_file_name_ = config_file_path_ + "/centernet.hbm";
 
@@ -55,12 +60,16 @@ CenterNet3DDetectionNode::CenterNet3DDetectionNode(const std::string &node_name,
   ss << "Parameter:"
      << "\nconfig_file_path_:" << config_file_path_
      << "\nshared_men:" << shared_mem_ << "\n is_sync_mode_: " << is_sync_mode_
-     << "\n model_file_name_: " << model_file_name_;
-  RCLCPP_WARN(rclcpp::get_logger("mono3d_indoor_detection"), "%s", ss.str().c_str());
+     << "\n model_file_name_: " << model_file_name_
+     << "\nfeed_image:" << feed_image_;
+  RCLCPP_WARN(rclcpp::get_logger("mono3d_indoor_detection"), "%s",
+              ss.str().c_str());
   if (Start() == 0) {
-    RCLCPP_WARN(rclcpp::get_logger("mono3d_indoor_detection"), "start success!!!");
+    RCLCPP_WARN(rclcpp::get_logger("mono3d_indoor_detection"),
+                "start success!!!");
   } else {
-    RCLCPP_ERROR(rclcpp::get_logger("mono3d_indoor_detection"), "start fail!!!");
+    RCLCPP_ERROR(rclcpp::get_logger("mono3d_indoor_detection"),
+                 "start fail!!!");
   }
 }
 
@@ -82,6 +91,20 @@ int CenterNet3DDetectionNode::Start() {
   RCLCPP_INFO(rclcpp::get_logger("mono3d_indoor_detection"),
               "The model input width is %d and height is %d",
               model_input_width_, model_input_height_);
+  msg_publisher_ = this->create_publisher<ai_msgs::msg::PerceptionTargets>(
+      msg_pub_topic_name_, 10);
+  RCLCPP_INFO(rclcpp::get_logger("mono3d_indoor_detection"),
+              "msg_pub_topic_name: %s", msg_pub_topic_name_.data());
+  if (!feed_image_.empty()) {
+    std::cout << "mono3d read image:" << feed_image_
+              << " to detect" << std::endl;
+    PredictByImage(feed_image_);
+    return 0;
+  }
+
+  //
+  RCLCPP_INFO(rclcpp::get_logger("mono3d_indoor_detection"),
+              "Detect images that use subscriptions");
 
   if (shared_mem_) {
 #ifdef SHARED_MEM_ENABLED
@@ -94,7 +117,8 @@ int CenterNet3DDetectionNode::Start() {
             std::bind(&CenterNet3DDetectionNode::SharedMemImgProcess, this,
                       std::placeholders::_1));
 #else
-    RCLCPP_ERROR(rclcpp::get_logger("mono3d_indoor_detection"), "Unsupport shared mem");
+    RCLCPP_ERROR(rclcpp::get_logger("mono3d_indoor_detection"),
+                 "Unsupport shared mem");
 #endif
   } else {
     RCLCPP_WARN(rclcpp::get_logger("mono3d_indoor_detection"),
@@ -105,10 +129,7 @@ int CenterNet3DDetectionNode::Start() {
         std::bind(&CenterNet3DDetectionNode::RosImgProcess, this,
                   std::placeholders::_1));
   }
-  msg_publisher_ = this->create_publisher<ai_msgs::msg::PerceptionTargets>(
-      msg_pub_topic_name_, 10);
-  RCLCPP_INFO(rclcpp::get_logger("msg pub"), "msg_pub_topic_name: %s",
-              msg_pub_topic_name_.data());
+
   return 0;
 }
 
@@ -128,7 +149,8 @@ int CenterNet3DDetectionNode::SetOutputParser() {
   // set output parser
   auto model_manage = GetModel();
   if (!model_manage || !dnn_node_para_ptr_) {
-    RCLCPP_ERROR(rclcpp::get_logger("mono3d_indoor_detection"), "Invalid model");
+    RCLCPP_ERROR(rclcpp::get_logger("mono3d_indoor_detection"),
+                 "Invalid model");
     return -1;
   }
 
@@ -277,34 +299,75 @@ int CenterNet3DDetectionNode::PostProcess(
     targets.reserve(det_result->boxes.size());
     for(auto &box : det_result->boxes) {
       ai_msgs::msg::Target target;
+      switch (box.class_label) {
+        case BBox3D::CHARGING_BASE:
+          target.type = "charging_base";
+          break;
+        case BBox3D::SLIPPER:
+          target.type = "slipper";
+          break;
+        case BBox3D::TRASH_CAN:
+          target.type = "trash_can";
+          break;
+      }
+      RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"), "target type: %s",
+                  target.type.c_str());
+
       ai_msgs::msg::Attribute attribute;
       ai_msgs::msg::Point point;
       attribute.type = "width";
-      attribute.value =  box.w * 1000.;
+      attribute.value = box.w * 1000.;
+      RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
+                  "target type: %s, value: %f", attribute.type.c_str(),
+                  attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "height";
-      attribute.value =  box.h * 1000.;
+      attribute.value = box.h * 1000.;
+      RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
+                  "target type: %s, value: %f", attribute.type.c_str(),
+                  attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "length";
-      attribute.value =  box.l * 1000.;
+      attribute.value = box.l * 1000.;
+      RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
+                  "target type: %s, value: %f", attribute.type.c_str(),
+                  attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "rotation";
-      attribute.value =  box.r * 1000.;
+      attribute.value = box.r * 1000.;
+      RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
+                  "target type: %s, value: %f", attribute.type.c_str(),
+                  attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "x";
-      attribute.value =  box.x * 1000.;
+      attribute.value = box.x * 1000.;
+      RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
+                  "target type: %s, value: %f", attribute.type.c_str(),
+                  attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "y";
-      attribute.value =  box.y * 1000.;
+      attribute.value = box.y * 1000.;
+      RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
+                  "target type: %s, value: %f", attribute.type.c_str(),
+                  attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "z";
-      attribute.value =  box.z * 1000.;
+      attribute.value = box.z * 1000.;
+      RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
+                  "target type: %s, value: %f", attribute.type.c_str(),
+                  attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "depth";
-      attribute.value =  box.d * 1000.;
+      attribute.value = box.d * 1000.;
+      RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
+                  "target type: %s, value: %f", attribute.type.c_str(),
+                  attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "score";
-      attribute.value =  box.score * 1000.;
+      attribute.value = box.score * 1000.;
+      RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
+                  "target type: %s, value: %f", attribute.type.c_str(),
+                  box.score);
       target.attributes.push_back(attribute);
 
       // 8 corners
@@ -330,18 +393,6 @@ int CenterNet3DDetectionNode::PostProcess(
       }
       point.type = "corners";
       target.points.push_back(point);
-
-      switch (box.class_label) {
-        case BBox3D::CHARGING_BASE :
-          target.type = "charging_base";
-          break;
-        case BBox3D::SLIPPER :
-          target.type = "slipper";
-          break;
-        case BBox3D::TRASH_CAN :
-          target.type = "trash_can";
-          break;
-      }
       targets.push_back(target);
     }
 
@@ -513,7 +564,8 @@ void CenterNet3DDetectionNode::SharedMemImgProcess(
     return;
   }
 
-  RCLCPP_DEBUG(rclcpp::get_logger("mono3d_indoor_detection"), "go into shared mem");
+  RCLCPP_DEBUG(rclcpp::get_logger("mono3d_indoor_detection"),
+               "go into shared mem");
 
   // dump recved img msg
   // std::ofstream ofs("img_" + std::to_string(img_msg->index) + "." +

@@ -57,7 +57,7 @@ sensor_msgs::msg::Image::SharedPtr create_image(
   int image_size = nv_12.cols * nv_12.rows;
   out_img->data.resize(image_size);
   std::memcpy(out_img->data.data(), nv_12.data, image_size);
-  out_img->header.frame_id = "camera";
+  out_img->header.frame_id = image;  // "camera";
   out_img->header.stamp = rclcpp::Clock().now();
   return out_img;
 }

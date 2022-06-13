@@ -1,7 +1,7 @@
 # 功能介绍
 
 mono3d_indoor_detection package是使用hobot_dnn package开发的室内物体3D检测算法示例，在地平线旭日X3开发板上使用3D检测模型和室内数据利用BPU处理器进行模型推理。
-3D检测模型与sensor以及sensor参数相关，在不同sensor不同参数情况下展示出来的效果不一样，因此本package并不直接订阅sensors/msg/Image类型的话题，而是通过读取本地图片发布/image_raw，package内部再订阅图片的形式对图片进行推理，检测出物体的类别以及3D定位信息，并通过话题发布。
+3D检测模型与sensor以及sensor参数相关，在不同sensor不同参数情况下展示出来的效果不一样，因此本package默认并不直接订阅sensors/msg/Image类型的话题，而是通过读取本地图片的形式进行推理，检测出物体的类别以及3D定位信息，将AI信息通过话题发布的同时会将结果渲染在图片上保存在程序运行的result目录。
 
 算法支持的室内物体检测类别如下：
 
@@ -135,10 +135,9 @@ colcon build --packages-select mono3d_indoor_detection \
 
 | 参数名                 | 类型        | 解释                                        | 是否必须 | 支持的配置           | 默认值                        |
 | ---------------------- | ----------- | ------------------------------------------- | -------- | -------------------- | ----------------------------- |
-| is_sync_mode           | int         | 同步/异步推理模式。0：异步模式；1：同步模式 | 否       | 0/1                  | 0                             |
 | config_file_path | std::string | 推理使用的配置文件路径，内含模型文件               | 否       | 根据实际路径配置 | ./config       |
-| ai_msg_pub_topic_name  | std::string | 发布包含3D检测结果的AI消息的topic名 | 是       | 根据实际部署环境配置 | /ai_msg_3d_detection |
-| image_sub_topic_name | std::string | 订阅sensor_msgs::msg::Image     | 是       | 根据实际部署环境配置 | /image_raw     |
+| feed_image | std::string | 推理使用的图片 | 否 | 根据实际路径配置 | ./config/images/3d_detection.png |
+| ai_msg_pub_topic_name  | std::string | 发布包含3D检测结果的AI消息的topic名 | 否      | 根据实际部署环境配置 | /ai_msg_3d_detection |
 
 ## 运行
 
@@ -154,9 +153,7 @@ source ./install/setup.bash
 cp -r install/lib/mono3d_indoor_detection/config/ .
 
 # 启动3D检测node
-ros2 run mono3d_indoor_detection mono3d_indoor_detection &
-# 启动图片发布node
-ros2 run mono3d_indoor_detection image_publisher ./config/images/
+ros2 run mono3d_indoor_detection mono3d_indoor_detection
 
 ```
 
@@ -184,9 +181,7 @@ export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./install/lib/
 cp -r install/lib/mono3d_indoor_detection/config/ .
 
 # 启动3D检测node
-./install/lib/mono3d_indoor_detection/mono3d_indoor_detection &
-# 启动图片发布node
-./install/lib/mono3d_indoor_detection/image_publisher ./config/images/
+./install/lib/mono3d_indoor_detection/mono3d_indoor_detection
 
 ```
 
@@ -218,6 +213,8 @@ cp -r install/lib/mono3d_indoor_detection/config/ .
 ```
 以上log截取了一帧的处理结果，结果显示，订阅到的ai msg中的target type即分类结果为trash_can，
 同时也给出了trash_can的三维和距离以及旋转角度信息。
+
+示例中读取本地图片推理的结果会渲染到图片上，并且保存在当前目录的result目录下。
 
 
 

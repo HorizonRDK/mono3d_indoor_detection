@@ -25,10 +25,12 @@ def generate_launch_description():
         Node(
             package='mono3d_indoor_detection',
             executable='mono3d_indoor_detection',
-            output='screen'),
-        Node(
-            package='mono3d_indoor_detection',
-            executable='image_publisher',
             output='screen',
-            arguments=["config/images/"])
+            parameters=[
+                {"config_file_path": "./config"},
+                {"feed_image": "./config/images/3d_detection.png"},
+                {"ai_msg_pub_topic_name": "ai_msg_3d_detection"}
+            ],
+            arguments=['--ros-args', '--log-level', 'info']
+        )
     ])

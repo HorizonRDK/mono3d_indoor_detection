@@ -29,7 +29,7 @@ int get_tensor_hwc_index(std::shared_ptr<DNNTensor> tensor, int *h_index,
 }
 
 int32_t CenterNet3DOutputParser::Parse(
-    std::shared_ptr<DNNResult> &output,
+    std::shared_ptr<CenterNet3DDetResult> &output,
     std::vector<std::shared_ptr<InputDescription>> &input_descriptions,
     std::shared_ptr<OutputDescription> &output_descriptions,
     std::shared_ptr<DNNTensor> &output_tensor,

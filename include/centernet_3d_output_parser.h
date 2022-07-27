@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include "dnn/hb_dnn_ext.h"
 #include "easy_dnn/data_structure.h"
@@ -141,15 +142,24 @@ class CenterNet3DDetResult : public DNNResult {
   void Reset() override { boxes.clear(); }
 };
 
-class CenterNet3DAssistParser : public SingleBranchOutputParser {};
+class CenterNet3DAssistParser : public SingleBranchOutputParser<CenterNet3DDetResult> {
+ public:
+  int32_t Parse(
+      std::shared_ptr<CenterNet3DDetResult>& output,
+      std::vector<std::shared_ptr<InputDescription>>& input_descriptions,
+      std::shared_ptr<OutputDescription>& output_description,
+      std::shared_ptr<DNNTensor>& output_tensor) override {
+    return 0;
+  }
+};
 
-class CenterNet3DOutputParser : public MultiBranchOutputParser {
+class CenterNet3DOutputParser : public MultiBranchOutputParser<CenterNet3DDetResult> {
  public:
     CenterNet3DOutputParser(const std::string &config_file) {
       yaml_file_ = config_file + "/centernet.yaml";
     }
   int32_t Parse(
-      std::shared_ptr<DNNResult> &output,
+      std::shared_ptr<CenterNet3DDetResult> &output,
       std::vector<std::shared_ptr<InputDescription>> &input_descriptions,
       std::shared_ptr<OutputDescription> &output_descriptions,
       std::shared_ptr<DNNTensor> &output_tensor,

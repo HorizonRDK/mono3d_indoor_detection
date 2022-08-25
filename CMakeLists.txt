@@ -52,6 +52,15 @@ include_directories(
   ${CMAKE_SYSROOT}/usr/include/
 )
 
+# BUILD_HBMEM is set in aarch64_toolchainfile.cmake
+if (${BUILD_HBMEM})
+  message("using shared mem")
+  find_package(hbm_img_msgs REQUIRED)
+  add_definitions(-DSHARED_MEM_ENABLED)
+else()
+  message("not using shared mem")
+endif ()
+
 link_directories(
   ${CMAKE_SYSROOT}/usr/lib/hbbpu/
 )
@@ -83,6 +92,16 @@ ament_target_dependencies(
   OpenCV
   sensor_msgs
 )
+
+if (${BUILD_HBMEM})
+  target_link_libraries(${PROJECT_NAME}
+    hbmem
+  )
+  ament_target_dependencies(
+    ${PROJECT_NAME}
+    hbm_img_msgs
+  )
+endif ()
 
 # Install executables
 install(

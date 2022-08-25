@@ -27,7 +27,6 @@ uint64 track_id
 Roi[] rois
 
 # 属性信息，attributes包括 type 和 value 字段。
-# value字段在发布时乘了1000的系数，实际使用时，务！必！除以1000
 Attribute[] attributes
 Attribute[]数组包括以下信息：
 type    description
@@ -136,8 +135,11 @@ colcon build --packages-select mono3d_indoor_detection \
 | 参数名                 | 类型        | 解释                                        | 是否必须 | 支持的配置           | 默认值                        |
 | ---------------------- | ----------- | ------------------------------------------- | -------- | -------------------- | ----------------------------- |
 | config_file_path | std::string | 推理使用的配置文件路径，内含模型文件               | 否       | 根据实际路径配置 | ./config       |
-| feed_image | std::string | 推理使用的图片 | 否 | 根据实际路径配置 | ./config/images/3d_detection.png |
+| feed_image | std::string | 推理使用的图片 | 否 | 根据实际路径配置 | "" |
 | ai_msg_pub_topic_name  | std::string | 发布包含3D检测结果的AI消息的topic名 | 否      | 根据实际部署环境配置 | /ai_msg_3d_detection |
+| dump_render_img  | int | 是否进行渲染，0：否；1：是 | 否      | 0/1 | 0 |
+| shared_mem  | int | 是否使用shared_mem模式订阅图片，0：否；1：是 | 否      | 0/1 | 0 |
+
 
 ## 运行
 

@@ -29,7 +29,8 @@ def generate_launch_description():
             parameters=[
                 {"config_file_path": "./config"},
                 {"feed_image": "./config/images/3d_detection.png"},
-                {"ai_msg_pub_topic_name": "ai_msg_3d_detection"}
+                {"ai_msg_pub_topic_name": "ai_msg_3d_detection"},
+                {"dump_render_img": 1}
             ],
             arguments=['--ros-args', '--log-level', 'info']
         )

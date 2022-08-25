@@ -50,6 +50,7 @@ struct CenterNet3DOutput : public DnnNodeOutput {
   uint32_t src_img_width_;
   uint32_t src_img_height_;
   std::string image_name_;
+  std::shared_ptr<cv::Mat> mat_ = nullptr;
 };
 
 class CenterNet3DDetectionNode : public DnnNode {
@@ -80,9 +81,8 @@ class CenterNet3DDetectionNode : public DnnNode {
  private:
   // 输入参数
   std::string config_file_path_ = "./config";
-  int is_sync_mode_ = 1;
   int shared_mem_ = 0;
-  std::string feed_image_ = "./config/images/3d_detection.png";
+  std::string feed_image_ = "";// "./config/images/3d_detection.png";
 
   std::string model_file_name_ = "config/centernet.hbm";
   std::string model_name_ = "centernet";
@@ -109,6 +109,8 @@ class CenterNet3DDetectionNode : public DnnNode {
   // 目前只支持订阅原图，可以使用压缩图"/image_raw/compressed" topic
   // 和sensor_msgs::msg::CompressedImage格式扩展订阅压缩图
   std::string ros_img_topic_name_ = "/image_raw";
+
+  int dump_render_img_ = 0;
 };
 
 #endif  // INCLUDE_CENTERNET3D_DETECTION_NODE_H_

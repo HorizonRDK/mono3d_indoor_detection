@@ -147,24 +147,13 @@ colcon build --packages-select mono3d_indoor_detection \
 
 ### **Ubuntu**
 
-```
-export COLCON_CURRENT_PREFIX=./install
-source ./install/setup.bash
-# config中为示例使用的模型，根据实际安装路径进行拷贝
-# 如果是板端编译（无--merge-install编译选项），拷贝命令为cp -r install/PKG_NAME/lib/PKG_NAME/config/ .，其中PKG_NAME为具体的package名。
-cp -r install/lib/mono3d_indoor_detection/config/ .
 
-# 启动3D检测node
-ros2 run mono3d_indoor_detection mono3d_indoor_detection
-
-```
-
-### **Ubuntu Launch启动**
+**使用本地图片作为输入，并保存渲染后的图片**
 
 ```
 export COLCON_CURRENT_PREFIX=./install
 source ./install/setup.bash
-# config中为示例使用的模型，根据实际安装路径进行拷贝
+# config中为示例使用的模型和图片，根据实际安装路径进行拷贝
 # 如果是板端编译（无--merge-install编译选项），拷贝命令为cp -r install/PKG_NAME/lib/PKG_NAME/config/ .，其中PKG_NAME为具体的package名。
 cp -r install/lib/mono3d_indoor_detection/config/ .
 
@@ -172,6 +161,38 @@ cp -r install/lib/mono3d_indoor_detection/config/ .
 ros2 launch mono3d_indoor_detection mono3d_indoor_detection.launch.py 
 
 ```
+
+**订阅hobot_image_publisher发布本地图片，web端展示**
+
+```
+export COLCON_CURRENT_PREFIX=./install
+source ./install/setup.bash
+# config中为示例使用的模型和图片，根据实际安装路径进行拷贝
+cp -r install/lib/mono3d_indoor_detection/config/ .
+
+export CAM_TYPE=fb
+
+# 启动3D检测 package
+ros2 launch mono3d_indoor_detection mono3d_indoor_detection_pipeline.launch.py
+
+```
+
+**订阅MIPI摄像头发布图片，web端展示**
+
+```
+export COLCON_CURRENT_PREFIX=./install
+source ./install/setup.bash
+# config中为示例使用的模型和图片，根据实际安装路径进行拷贝
+cp -r install/lib/mono3d_indoor_detection/config/ .
+
+# 默认使用F37摄像头
+export CAM_TYPE=mipi
+
+# 启动3D检测 package
+ros2 launch mono3d_indoor_detection mono3d_indoor_detection_pipeline.launch.py
+
+```
+
 
 ### **Linux**
 

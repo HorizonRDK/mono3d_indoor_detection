@@ -35,7 +35,6 @@ using hobot::easy_dnn::OutputParser;
 CenterNet3DDetectionNode::CenterNet3DDetectionNode(const std::string &node_name,
                                      const NodeOptions &options)
     : DnnNode(node_name, options), output_frameCount_(0) {
-  this->declare_parameter<int>("is_sync_mode", is_sync_mode_);
   this->declare_parameter<std::string>("config_file_path", config_file_path_);
   this->declare_parameter<int>("shared_mem", shared_mem_);
   this->declare_parameter<std::string>("ai_msg_pub_topic_name",
@@ -43,14 +42,15 @@ CenterNet3DDetectionNode::CenterNet3DDetectionNode(const std::string &node_name,
   this->declare_parameter<std::string>("image_sub_topic_name",
                                        ros_img_topic_name_);
   this->declare_parameter<std::string>("feed_image", feed_image_);
+  this->declare_parameter<int>("dump_render_img", dump_render_img_);
 
-  this->get_parameter<int>("is_sync_mode", is_sync_mode_);
   this->get_parameter<std::string>("config_file_path", config_file_path_);
   this->get_parameter<int>("shared_mem", shared_mem_);
   this->get_parameter<std::string>("ai_msg_pub_topic_name",
                                    msg_pub_topic_name_);
   this->get_parameter<std::string>("image_sub_topic_name", ros_img_topic_name_);
   this->get_parameter<std::string>("feed_image", feed_image_);
+  this->get_parameter<int>("dump_render_img", dump_render_img_);
 
   model_file_name_ = config_file_path_ + "/centernet.hbm";
 
@@ -58,10 +58,10 @@ CenterNet3DDetectionNode::CenterNet3DDetectionNode(const std::string &node_name,
 
   std::stringstream ss;
   ss << "Parameter:"
-     << "\nconfig_file_path_:" << config_file_path_
-     << "\nshared_men:" << shared_mem_ << "\n is_sync_mode_: " << is_sync_mode_
+     << "\n config_file_path_:" << config_file_path_
      << "\n model_file_name_: " << model_file_name_
-     << "\nfeed_image:" << feed_image_;
+     << "\n feed_image:" << feed_image_
+     << "\n dump_render_img:" << dump_render_img_;
   RCLCPP_WARN(rclcpp::get_logger("mono3d_indoor_detection"), "%s",
               ss.str().c_str());
   if (Start() == 0) {
@@ -141,7 +141,7 @@ int CenterNet3DDetectionNode::SetNodePara() {
   dnn_node_para_ptr_->model_file = model_file_name_;
   dnn_node_para_ptr_->model_name = model_name_;
   dnn_node_para_ptr_->model_task_type = model_task_type_;
-  dnn_node_para_ptr_->task_num = 1;
+  dnn_node_para_ptr_->task_num = 2;
   return 0;
 }
 
@@ -201,6 +201,7 @@ int CenterNet3DDetectionNode::SetOutputParser() {
       cv::HersheyFonts::FONT_HERSHEY_PLAIN, \
       fontScale, CV_RGB(0, 255, 128), thickness); }
 
+// 使用算法输出进行渲染
 void Render3DBox(const BBox3D &box, cv::Mat &image) {
   auto &points = box.corners2d_upscale;
   CV_DRAW_LINE(0, 1)
@@ -217,6 +218,17 @@ void Render3DBox(const BBox3D &box, cv::Mat &image) {
   CV_DRAW_LINE(6, 7)
 
   std::string box_type = std::to_string(box.class_label);
+  switch (box.class_label) {
+    case BBox3D::CHARGING_BASE:
+      box_type = "charging_base";
+      break;
+    case BBox3D::SLIPPER:
+      box_type = "slipper";
+      break;
+    case BBox3D::TRASH_CAN:
+      box_type = "trash_can";
+      break;
+  }
   std::string score = std::to_string(box.score);
   int offset = 0;
   if (-M_PI_2 <= box.r || box.r <= M_PI_2) {
@@ -225,6 +237,71 @@ void Render3DBox(const BBox3D &box, cv::Mat &image) {
   } else {
     CV_PUT_TEXT(box_type, points[6][0], points[6][1], offset);
     CV_PUT_TEXT(score, points[6][0], points[6][1], offset);
+  }
+}
+
+// 使用发布的msg进行渲染
+void Render3DBox(const ai_msgs::msg::PerceptionTargets::UniquePtr &pub_data, cv::Mat &image) {
+  auto draw_line = [&image](const ai_msgs::msg::Point& points, size_t p1, size_t p2){
+    cv::line(image, cv::Point(points.point.at(p1).x, points.point.at(p1).y),
+            cv::Point(points.point.at(p2).x, points.point.at(p2).y),
+            CV_RGB(0, 255, 0), 2);
+  };
+
+  auto put_text = [&image](const std::string& text, int px, int py, int& offset) {
+    double fontScale = 3.0l;
+    int thickness = 3u, baseline;
+    cv::Size text_size = cv::getTextSize(text, cv::HersheyFonts::FONT_HERSHEY_PLAIN, fontScale, thickness, &baseline);
+    cv::Point point(px, py);
+    point.y += offset;
+    cv::Rect rect(point.x, point.y,
+                  text_size.width, text_size.height);
+    point.y += text_size.height;
+    offset += text_size.height * 1.2;
+    cv::putText(image, text, point,
+      cv::HersheyFonts::FONT_HERSHEY_PLAIN,
+      fontScale, CV_RGB(0, 255, 128), thickness);
+  };
+
+  for (const auto& target : pub_data->targets) {
+    std::string score{""};
+    float rotation = 0;
+    for (const auto& attribute : target.attributes) {
+      if (attribute.type == "score") {
+        score = std::to_string(attribute.value);
+      }
+      if (attribute.type == "rotation") {
+        rotation = attribute.value;
+      }
+    }
+
+    for (const auto& point : target.points) {
+      if ("corners" != point.type) {
+        continue;
+      }
+      
+      draw_line(point, 0, 1);
+      draw_line(point, 0, 3);
+      draw_line(point, 0, 4);
+      draw_line(point, 1, 2);
+      draw_line(point, 1, 5);
+      draw_line(point, 2, 3);
+      draw_line(point, 2, 6);
+      draw_line(point, 3, 7);
+      draw_line(point, 4, 5);
+      draw_line(point, 4, 7);
+      draw_line(point, 5, 6);
+      draw_line(point, 6, 7);
+      
+      int offset = 0;
+      if (-M_PI_2 <= rotation || rotation <= M_PI_2) {
+        put_text(target.type, point.point[7].x, point.point[7].y, offset);
+        put_text(score, point.point[7].x, point.point[7].y, offset);
+      } else {
+        put_text(target.type, point.point[6].x, point.point[6].y, offset);
+        put_text(score, point.point[6].x, point.point[6].y, offset);
+      }
+    }
   }
 }
 
@@ -316,55 +393,55 @@ int CenterNet3DDetectionNode::PostProcess(
       ai_msgs::msg::Attribute attribute;
       ai_msgs::msg::Point point;
       attribute.type = "width";
-      attribute.value = box.w * 1000.;
+      attribute.value = box.w;
       RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
                   "target type: %s, value: %f", attribute.type.c_str(),
                   attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "height";
-      attribute.value = box.h * 1000.;
+      attribute.value = box.h;
       RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
                   "target type: %s, value: %f", attribute.type.c_str(),
                   attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "length";
-      attribute.value = box.l * 1000.;
+      attribute.value = box.l;
       RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
                   "target type: %s, value: %f", attribute.type.c_str(),
                   attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "rotation";
-      attribute.value = box.r * 1000.;
+      attribute.value = box.r;
       RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
                   "target type: %s, value: %f", attribute.type.c_str(),
                   attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "x";
-      attribute.value = box.x * 1000.;
+      attribute.value = box.x;
       RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
                   "target type: %s, value: %f", attribute.type.c_str(),
                   attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "y";
-      attribute.value = box.y * 1000.;
+      attribute.value = box.y;
       RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
                   "target type: %s, value: %f", attribute.type.c_str(),
                   attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "z";
-      attribute.value = box.z * 1000.;
+      attribute.value = box.z;
       RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
                   "target type: %s, value: %f", attribute.type.c_str(),
                   attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "depth";
-      attribute.value = box.d * 1000.;
+      attribute.value = box.d;
       RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
                   "target type: %s, value: %f", attribute.type.c_str(),
                   attribute.value);
       target.attributes.push_back(attribute);
       attribute.type = "score";
-      attribute.value = box.score * 1000.;
+      attribute.value = box.score;
       RCLCPP_INFO(rclcpp::get_logger("mono3d_detection"),
                   "target type: %s, value: %f", attribute.type.c_str(),
                   box.score);
@@ -385,31 +462,57 @@ int CenterNet3DDetectionNode::PostProcess(
             |/         |/   |/         |/
             3----------2    1----------0
         */
+      // 找到最大包络框
+      int x_min = -1;
+      int x_max = 0;
+      int y_min = -1;
+      int y_max = 0;
       for (const auto &corners : box.corners2d_upscale) {
         geometry_msgs::msg::Point32 g_point;
         g_point.x = corners[0];
         g_point.y = corners[1];
+        if (x_min < 0 || x_min > g_point.x) {
+          x_min = g_point.x;
+        }
+        if (x_max < g_point.x) {
+          x_max = g_point.x;
+        }
+        if (y_min < 0 || y_min > g_point.y) {
+          y_min = g_point.y;
+        }
+        if (y_max < g_point.y) {
+          y_max = g_point.y;
+        }
         point.point.push_back(g_point);
       }
       point.type = "corners";
       target.points.push_back(point);
+      
+      ai_msgs::msg::Roi roi;
+      roi.type = "corners";
+      roi.rect.set__x_offset(x_min);
+      roi.rect.set__y_offset(y_min);
+      roi.rect.set__width(x_max - x_min);
+      roi.rect.set__height(y_max - y_min);
+      target.rois.emplace_back(roi);
       targets.push_back(target);
     }
 
     pub_data->targets = std::move(targets);
 
-    if (!centernet_3d_output->image_name_.empty()) {
-      auto img_bgr = cv::imread(centernet_3d_output->image_name_);
-      for(auto &box : det_result->boxes) {
-        Render3DBox(box, img_bgr);
-      }
-      std::string::size_type iPos =
-              centernet_3d_output->image_name_.find_last_of('/') + 1;
-      std::string filename =
-              centernet_3d_output->image_name_.substr(
-                      iPos, centernet_3d_output->image_name_.length() - iPos);
-      cv::imwrite("./result/" + filename, img_bgr);
-    }
+    // 使用算法输出进行渲染
+    // if (!centernet_3d_output->image_name_.empty()) {
+    //   auto img_bgr = cv::imread(centernet_3d_output->image_name_);
+    //   for(auto &box : det_result->boxes) {
+    //     Render3DBox(box, img_bgr);
+    //   }
+    //   std::string::size_type iPos =
+    //           centernet_3d_output->image_name_.find_last_of('/') + 1;
+    //   std::string filename =
+    //           centernet_3d_output->image_name_.substr(
+    //                   iPos, centernet_3d_output->image_name_.length() - iPos);
+    //   cv::imwrite("./result/" + filename, img_bgr);
+    // }
   }
 
   clock_gettime(CLOCK_REALTIME, &time_start);
@@ -417,6 +520,20 @@ int CenterNet3DDetectionNode::PostProcess(
   perf.stamp_end.nanosec = time_start.tv_nsec;
   pub_data->perfs.emplace_back(perf);
 
+  // 使用发布的msg进行渲染
+  if (dump_render_img_ && centernet_3d_output->mat_) {
+    cv::Mat img_bgr = *centernet_3d_output->mat_;
+    Render3DBox(pub_data, img_bgr);
+    std::string filename = "./result/";
+    if (centernet_3d_output->image_msg_header_) {
+      filename += centernet_3d_output->image_msg_header_->frame_id + "_" +
+                  std::to_string(centernet_3d_output->image_msg_header_->stamp.sec) + "_" +
+                  std::to_string(centernet_3d_output->image_msg_header_->stamp.sec);
+    }
+    filename += ".jpeg";
+    cv::imwrite(filename, img_bgr);
+  }
+  
   msg_publisher_->publish(std::move(pub_data));
   return 0;
 }
@@ -425,7 +542,7 @@ int CenterNet3DDetectionNode::Predict(
     std::vector<std::shared_ptr<DNNInput>> &inputs,
     const std::shared_ptr<std::vector<hbDNNRoi>> rois,
     std::shared_ptr<DnnNodeOutput> dnn_output) {
-  return Run(inputs, dnn_output, rois, is_sync_mode_ == 1);
+  return Run(inputs, dnn_output, rois, false);
 }
 
 void CenterNet3DDetectionNode::RosImgProcess(
@@ -503,6 +620,14 @@ void CenterNet3DDetectionNode::RosImgProcess(
   dnn_output->image_msg_header_->set__stamp(img_msg->header.stamp);
   dnn_output->image_name_ = "";
 
+  if (dump_render_img_ && ("nv12" == std::string(reinterpret_cast<const char *>(img_msg->encoding.data())))) {
+    cv::Mat nv12(img_msg->height * 3 / 2, img_msg->width, CV_8UC1,
+    const_cast<char*>(reinterpret_cast<const char *>(img_msg->data.data())));
+    cv::Mat img_bgr;                               //  get bgr mat from pyramid
+    cv::cvtColor(nv12, img_bgr, CV_YUV2BGR_NV12);  //  nv12 to bgr
+    dnn_output->mat_ = std::make_shared<cv::Mat>(img_bgr);
+  }
+
   // 3. 开始预测
   uint32_t ret = Predict(inputs, nullptr, dnn_output);
   {
@@ -542,11 +667,15 @@ int CenterNet3DDetectionNode::PredictByImage(
   dnn_output->src_img_width_ = 1920;
   dnn_output->src_img_height_ = 1024;
   dnn_output->image_msg_header_ = std::make_shared<std_msgs::msg::Header>();
-  dnn_output->image_msg_header_->set__frame_id("test_frame");
+  dnn_output->image_msg_header_->set__frame_id("feedback");
   dnn_output->image_msg_header_->set__stamp(rclcpp::Time());
   dnn_output->image_name_ = image;
   // dnn_output->image_msg_header->set__frame_id(std::to_string(img_msg->index));
   // dnn_output->image_msg_header->set__stamp(img_msg->time_stamp);
+
+  if (dump_render_img_) {
+    dnn_output->mat_ = std::make_shared<cv::Mat>(cv::imread(image, cv::IMREAD_COLOR));
+  }
 
   // 3. 开始预测
   uint32_t ret = Predict(inputs, nullptr, dnn_output);
@@ -612,6 +741,14 @@ void CenterNet3DDetectionNode::SharedMemImgProcess(
   dnn_output->image_msg_header_ = std::make_shared<std_msgs::msg::Header>();
   dnn_output->image_msg_header_->set__frame_id(std::to_string(img_msg->index));
   dnn_output->image_msg_header_->set__stamp(img_msg->time_stamp);
+
+  if (dump_render_img_ && ("nv12" == std::string(reinterpret_cast<const char *>(img_msg->encoding.data())))) {
+    cv::Mat nv12(img_msg->height * 3 / 2, img_msg->width, CV_8UC1,
+    const_cast<char*>(reinterpret_cast<const char *>(img_msg->data.data())));
+    cv::Mat img_bgr;                               //  get bgr mat from pyramid
+    cv::cvtColor(nv12, img_bgr, CV_YUV2BGR_NV12);  //  nv12 to bgr
+    dnn_output->mat_ = std::make_shared<cv::Mat>(img_bgr);
+  }
 
   // 3. 开始预测
   int ret = Predict(inputs, nullptr, dnn_output);

@@ -40,10 +40,10 @@ void ai_msg_callback(ai_msgs::msg::PerceptionTargets::SharedPtr ai_msg) {
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
   auto node = std::make_shared<CenterNet3DDetectionNode>("mono3d_dection_node");
-  std::string ai_msg_topic;
-  node->get_parameter<std::string>("ai_msg_pub_topic_name", ai_msg_topic);
-  auto ai_sub = node->create_subscription<ai_msgs::msg::PerceptionTargets>(
-          ai_msg_topic, 5, ai_msg_callback);
+  // std::string ai_msg_topic;
+  // node->get_parameter<std::string>("ai_msg_pub_topic_name", ai_msg_topic);
+  // auto ai_sub = node->create_subscription<ai_msgs::msg::PerceptionTargets>(
+  //         ai_msg_topic, 5, ai_msg_callback);
   rclcpp::spin(node);
   rclcpp::shutdown();
   return 0;

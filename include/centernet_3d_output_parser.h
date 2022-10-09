@@ -22,20 +22,16 @@
 #include <vector>
 #include <iostream>
 
-#include "dnn/hb_dnn_ext.h"
-#include "easy_dnn/data_structure.h"
-#include "easy_dnn/description.h"
-#include "easy_dnn/model.h"
-#include "easy_dnn/output_parser.h"
+#include "dnn_node/dnn_node_data.h"
 
-using hobot::easy_dnn::DNNResult;
-using hobot::easy_dnn::DNNTensor;
-using hobot::easy_dnn::InputDescription;
-using hobot::easy_dnn::Model;
-using hobot::easy_dnn::MultiBranchOutputParser;
-using hobot::easy_dnn::OutputDescription;
-using hobot::easy_dnn::OutputParser;
-using hobot::easy_dnn::SingleBranchOutputParser;
+using hobot::dnn_node::DNNResult;
+using hobot::dnn_node::DNNTensor;
+using hobot::dnn_node::InputDescription;
+using hobot::dnn_node::Model;
+using hobot::dnn_node::MultiBranchOutputParser;
+using hobot::dnn_node::OutputDescription;
+using hobot::dnn_node::OutputParser;
+using hobot::dnn_node::SingleBranchOutputParser;
 
 class CenterNet3DOutputDescription : public OutputDescription {
  public:

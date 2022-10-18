@@ -1,6 +1,6 @@
 # Changelog for package mono3d_indoor_detection
 
-tros_1.1.3 (2022-10-09)
+tros_1.1.2rc1 (2022-10-09)
 ------------------
 1. 头文件中删除不必要的类型引用。
 

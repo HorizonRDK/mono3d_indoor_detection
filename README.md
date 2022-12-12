@@ -94,8 +94,10 @@ OpenCV用于图像处理。
 ### 编译选项
 
 1. SHARED_MEM
-   - 零拷贝使能开关，默认打开(ON), 编译时可以通过--cmake-args -DSHARED_MEM=OFF关闭。
-   - 打开时，编译会依赖hbm_img_msgs package。
+   - 零拷贝传输方式使能开关，默认打开(ON), 编译时可以通过--cmake-args -DSHARED_MEM=OFF关闭。
+   - 如果打开，编译会依赖hbm_img_msgs package，并且需要使用tros进行编译。
+   - 如果关闭，编译和运行不依赖hbm_img_msgs pkg，支持使用原生ros和tros进行编译。
+   - 对于零拷贝通信方式，当前只支持订阅nv12格式图片。
 
 ### Ubuntu板端编译
 

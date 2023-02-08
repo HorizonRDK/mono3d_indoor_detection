@@ -47,42 +47,41 @@ include_directories(include
   ${PROJECT_SOURCE_DIR}
 )
 
-if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
-  message("platform aarch64")
+if(PLATFORM_X3)
+  message("build platform X3")
+  set(SYS_ROOT ${CMAKE_SYSROOT})
+elseif(PLATFORM_J5)
+  message("build platform J5")
+elseif(PLATFORM_X86)
+  message("build platform X86")
+  message("THIRD_PARTY is " ${THIRD_PARTY})
+  add_definitions(-DPLATFORM_X86)
+  set(SYS_ROOT ${THIRD_PARTY})
+  link_directories(${THIRD_PARTY}/usr/lib)
+else()
+  message("invalid platform, build platform X3 default")
+  set(SYS_ROOT ${CMAKE_SYSROOT})
+endif()
 
-  message("CMAKE_SYSROOT is " ${CMAKE_SYSROOT})
-  include_directories(
-    ${CMAKE_SYSROOT}/usr/include/
-  )
+
+message("CMAKE_SYSROOT is " ${CMAKE_SYSROOT})
+include_directories(
+  ${SYS_ROOT}/usr/include/
+)
+link_directories(
+  ${SYS_ROOT}/usr/lib/hbbpu/
+)
 
   # BUILD_HBMEM is set in aarch64_toolchainfile.cmake
-  if (${BUILD_HBMEM})
-    message("using shared mem")
-    find_package(hbm_img_msgs REQUIRED)
-    add_definitions(-DSHARED_MEM_ENABLED)
-  else()
-    message("not using shared mem")
-  endif ()
+if (${BUILD_HBMEM})
+  message("using shared mem")
+  find_package(hbm_img_msgs REQUIRED)
+  add_definitions(-DSHARED_MEM_ENABLED)
+else()
+  message("not using shared mem")
+endif ()
 
-  link_directories(
-    ${CMAKE_SYSROOT}/usr/lib/hbbpu/
-  )
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
-  message("platform x86_64")
 
-  set(SYS_ROOT ${THIRD_PARTY})
-  message("SYS_ROOT is " ${SYS_ROOT})
-
-  message("CMAKE_SYSROOT is " ${CMAKE_SYSROOT})
-  include_directories(
-    ${SYS_ROOT}/usr_x86/include
-  )
-
-  link_directories(
-    ${SYS_ROOT}/usr_x86/lib/hbbpu/
-    ${SYS_ROOT}/usr_x86/lib/
-  )
-endif()
 
 add_executable(${PROJECT_NAME}
   src/main.cpp
@@ -113,9 +112,6 @@ ament_target_dependencies(
 )
 
 if (${BUILD_HBMEM})
-  target_link_libraries(${PROJECT_NAME}
-    hbmem
-  )
   ament_target_dependencies(
     ${PROJECT_NAME}
     hbm_img_msgs

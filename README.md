@@ -145,7 +145,7 @@ OpenCV用于图像处理。
    - 编译命令：
 
    ```
-   colcon build --packages-select hobot_codec  \
+   colcon build --packages-select mono3d_indoor_detection  \
       --merge-install \
       --cmake-args \
       -DPLATFORM_X86=ON \

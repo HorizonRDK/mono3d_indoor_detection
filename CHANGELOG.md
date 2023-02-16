@@ -1,6 +1,6 @@
 # Changelog for package mono3d_indoor_detection
 
-tros_1.1.5 (2023-02-03)
+tros_1.1.6a (2023-02-16)
 ------------------
 1. 适配x86版本功能
 

@@ -101,7 +101,7 @@ OpenCV用于图像处理。
    - 对于零拷贝通信方式，当前只支持订阅nv12格式图片。
 
 
-### Ubuntu板端编译
+### Ubuntu板端编译X3版本
 
 1. 编译环境确认 
    - 板端已安装X3 Ubuntu系统。
@@ -109,9 +109,9 @@ OpenCV用于图像处理。
    - 已安装ROS2编译工具colcon，安装命令：`pip install -U colcon-common-extensions`
 2. 编译
 
- 编译命令：`colcon build --packages-select mono3d_indoor_detection --cmake-args -DBUILD_HBMEM=ON`
+   - 编译命令：`colcon build --packages-select mono3d_indoor_detection --cmake-args -DBUILD_HBMEM=ON`
 
-### Docker交叉编译
+### Docker交叉编译X3版本
 
 1. 编译环境确认
 
@@ -121,18 +121,37 @@ OpenCV用于图像处理。
 
    - 编译命令：
 
-```
-export TARGET_ARCH=aarch64
-export TARGET_TRIPLE=aarch64-linux-gnu
-export CROSS_COMPILE=/usr/bin/$TARGET_TRIPLE-
+   ```
+   export TARGET_ARCH=aarch64
+   export TARGET_TRIPLE=aarch64-linux-gnu
+   export CROSS_COMPILE=/usr/bin/$TARGET_TRIPLE-
 
-colcon build --packages-select mono3d_indoor_detection \
-   --merge-install \
-   --cmake-force-configure \
-   --cmake-args \
-   --no-warn-unused-cli \
-   -DCMAKE_TOOLCHAIN_FILE=`pwd`/robot_dev_config/aarch64_toolchainfile.cmake
-```
+   colcon build --packages-select mono3d_indoor_detection \
+      --merge-install \
+      --cmake-force-configure \
+      --cmake-args \
+      --no-warn-unused-cli \
+      -DCMAKE_TOOLCHAIN_FILE=`pwd`/robot_dev_config/aarch64_toolchainfile.cmake
+   ```
+
+### X86 Ubuntu系统上编译 X86版本
+
+1. 编译环境确认
+
+   - x86 ubuntu版本: ubuntu20.04
+
+2. 编译
+
+   - 编译命令：
+
+   ```
+   colcon build --packages-select mono3d_indoor_detection  \
+      --merge-install \
+      --cmake-args \
+      -DPLATFORM_X86=ON \
+      -DBUILD_HBMEM=ON \
+      -DTHIRD_PARTY=`pwd`/../sysroot_docker \
+   ```
 
 ## 注意事项
 
@@ -157,7 +176,7 @@ colcon build --packages-select mono3d_indoor_detection \
 
 编译成功后，将生成的install路径拷贝到地平线旭日X3开发板上（如果是在X3上编译，忽略拷贝步骤），并执行如下命令运行：
 
-### **Ubuntu**
+### **X3 Ubuntu**
 
 
 **使用本地图片作为输入，并保存渲染后的图片**
@@ -206,11 +225,25 @@ ros2 launch mono3d_indoor_detection mono3d_indoor_detection_pipeline.launch.py
 ```
 
 
-### **Linux**
+### **X3 Linux**
 
 ```
 export ROS_LOG_DIR=/userdata/
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./install/lib/
+
+# config中为示例使用的模型，根据实际安装路径进行拷贝
+cp -r install/lib/mono3d_indoor_detection/config/ .
+
+# 启动3D检测node
+./install/lib/mono3d_indoor_detection/mono3d_indoor_detection
+
+```
+
+### **X86 Ubuntu**
+
+```
+export COLCON_CURRENT_PREFIX=./install
+source ./install/setup.bash
 
 # config中为示例使用的模型，根据实际安装路径进行拷贝
 cp -r install/lib/mono3d_indoor_detection/config/ .

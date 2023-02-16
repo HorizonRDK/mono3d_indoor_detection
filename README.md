@@ -248,9 +248,6 @@ source ./install/setup.bash
 # config中为示例使用的模型，根据实际安装路径进行拷贝
 cp -r install/lib/mono3d_indoor_detection/config/ .
 
-#设置运行环境变量
-export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:`pwd`/../sysroot_docker/usr/lib
-
 # 启动3D检测node
 ./install/lib/mono3d_indoor_detection/mono3d_indoor_detection
 

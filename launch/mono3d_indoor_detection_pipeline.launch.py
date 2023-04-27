@@ -20,94 +20,88 @@ from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from ament_index_python import get_package_share_directory
-from ament_index_python.packages import get_package_prefix
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+
 
 def generate_launch_description():
-    web_service_launch_include = IncludeLaunchDescription(
+    # 本地图片发布
+    fb_node = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
-                get_package_share_directory('websocket'),
-                'launch/hobot_websocket_service.launch.py'))
-    )
-    
-    # 本地图片发布
-    fb_node = Node(
-        package='hobot_image_publisher',
-        executable='hobot_image_pub',
-        output='screen',
-        parameters=[
-            {"image_source": "./config/images/3d_detection.png"},
-            {"image_format": "png"},
-            {"msg_pub_topic_name": "/hbmem_img"},
-            {"fps": 5}
-        ],
-        arguments=['--ros-args', '--log-level', 'error']
+                get_package_share_directory('hobot_image_publisher'),
+                'launch/hobot_image_publisher.launch.py')),
+        launch_arguments={
+            'publish_image_source': './config/images/3d_detection.png',
+            'publish_image_format': 'png',
+            'publish_message_topic_name': '/hbmem_img',
+            'publish_fps': '5'
+        }.items()
     )
 
     # mipi cam图片发布
-    mipi_node = Node(
-        package='mipi_cam',
-        executable='mipi_cam',
-        output='screen',
-        parameters=[
-            {"out_format": "nv12"},
-            {"image_width": 1920},
-            {"image_height": 1080},
-            {"io_method": "shared_mem"},
-            {"video_device": "F37"}
-        ],
-        arguments=['--ros-args', '--log-level', 'error']
+    mipi_cam_device_arg = DeclareLaunchArgument(
+        'device',
+        default_value='F37',
+        description='mipi camera device')
+
+    mipi_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory('mipi_cam'),
+                'launch/mipi_cam.launch.py')),
+        launch_arguments={
+            'mipi_image_width': '1920',
+            'mipi_image_height': '544',
+            'mipi_io_method': '1080',
+            'mipi_video_device': LaunchConfiguration('device')
+        }.items()
     )
 
     # usb cam图片发布
-    usb_node = Node(
-        package='hobot_usb_cam',
-        executable='hobot_usb_cam',
-        name='hobot_usb_cam',
-        parameters=[
-                    {"frame_id": "default_usb_cam"},
-                    {"image_height": 1920},
-                    {"image_width": 1080},
-                    {"zero_copy": False},
-                    {"video_device": "/dev/video8"}
-                    ],
-        arguments=['--ros-args', '--log-level', 'error']
+    usb_cam_device_arg = DeclareLaunchArgument(
+        'device',
+        default_value='/dev/video8',
+        description='usb camera device')
+    usb_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory('hobot_usb_cam'),
+                'launch/hobot_usb_cam.launch.py')),
+        launch_arguments={
+            'usb_image_width': '1920',
+            'usb_image_height': '1080',
+            'usb_video_device': LaunchConfiguration('device')
+        }.items()
     )
 
     # nv12->jpeg图片编码&发布
-    jpeg_codec_node = Node(
-        package='hobot_codec',
-        executable='hobot_codec_republish',
-        output='screen',
-        parameters=[
-            {"channel": 1},
-            {"in_mode": "shared_mem"},
-            {"in_format": "nv12"},
-            {"out_mode": "ros"},
-            {"out_format": "jpeg"},
-            {"sub_topic": "/hbmem_img"},
-            {"pub_topic": "/image"}
-        ],
-        arguments=['--ros-args', '--log-level', 'error']
+    jpeg_codec_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory('hobot_codec'),
+                'launch/hobot_codec_encode.launch.py')),
+        launch_arguments={
+            'codec_in_mode': 'shared_mem',
+            'codec_out_mode': 'ros',
+            'codec_sub_topic': '/hbmem_img',
+            'codec_pub_topic': '/image'
+        }.items()
     )
 
     # jpeg->nv12图片解码&发布
-    nv12_codec_node = Node(
-        package='hobot_codec',
-        executable='hobot_codec_republish',
-        output='screen',
-        parameters=[
-            {"channel": 1},
-            {"in_mode": "ros"},
-            {"in_format": "jpeg"},
-            {"out_mode": "shared_mem"},
-            {"out_format": "nv12"},
-            {"sub_topic": "/image"},
-            {"pub_topic": "/hbmem_img"}
-        ],
-        arguments=['--ros-args', '--log-level', 'error']
+    nv12_codec_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory('hobot_codec'),
+                'launch/hobot_codec_decode.launch.py')),
+        launch_arguments={
+            'codec_in_mode': 'ros',
+            'codec_out_mode': 'shared_mem',
+            'codec_sub_topic': '/image',
+            'codec_pub_topic': '/hbmem_img'
+        }.items()
     )
-
 
     # 算法检测
     mono3d_det_node = Node(
@@ -123,18 +117,17 @@ def generate_launch_description():
         arguments=['--ros-args', '--log-level', 'info']
     )
 
-
     # web展示
-    web_node = Node(
-        package='websocket',
-        executable='websocket',
-        output='screen',
-        parameters=[
-            {"image_topic": "/image"},
-            {"image_type": "mjpeg"},
-            {"smart_topic": "/ai_msg_3d_detection"}
-        ],
-        arguments=['--ros-args', '--log-level', 'error']
+    web_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory('websocket'),
+                'launch/websocket.launch.py')),
+        launch_arguments={
+            'websocket_image_topic': '/image',
+            'websocket_image_type': 'mjpeg',
+            'websocket_smart_topic': '/ai_msg_3d_detection'
+        }.items()
     )
 
     camera_type = os.getenv('CAM_TYPE')
@@ -154,13 +147,14 @@ def generate_launch_description():
         cam_node = fb_node
         camera_type_mipi = True
     else:
-        print("invalid camera_type ", camera_type, ", which is set with export CAM_TYPE=usb/mipi/fb, using default mipi cam")
+        print("invalid camera_type ", camera_type,
+              ", which is set with export CAM_TYPE=usb/mipi/fb, using default mipi cam")
         cam_node = mipi_node
         camera_type_mipi = True
 
     if camera_type_mipi:
         return LaunchDescription([
-            web_service_launch_include,
+            mipi_cam_device_arg,
             # 图片发布
             cam_node,
             # 图片编解码&发布
@@ -172,7 +166,7 @@ def generate_launch_description():
         ])
     else:
         return LaunchDescription([
-            web_service_launch_include,
+            usb_cam_device_arg,
             # 图片发布
             cam_node,
             # 图片编解码&发布

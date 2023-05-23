@@ -235,7 +235,7 @@ export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./install/lib/
 cp -r install/lib/mono3d_indoor_detection/config/ .
 
 # 启动3D检测node
-./install/lib/mono3d_indoor_detection/mono3d_indoor_detection
+./install/lib/mono3d_indoor_detection/mono3d_indoor_detection --ros-args -p feed_image:=./config/images/3d_detection.png -p dump_render_img:=1
 
 ```
 
@@ -249,7 +249,7 @@ source ./install/setup.bash
 cp -r install/lib/mono3d_indoor_detection/config/ .
 
 # 启动3D检测node
-./install/lib/mono3d_indoor_detection/mono3d_indoor_detection
+./install/lib/mono3d_indoor_detection/mono3d_indoor_detection --ros-args -p feed_image:=./config/images/3d_detection.png -p dump_render_img:=1
 
 ```
 

@@ -52,8 +52,8 @@ def generate_launch_description():
                 'launch/mipi_cam.launch.py')),
         launch_arguments={
             'mipi_image_width': '1920',
-            'mipi_image_height': '544',
-            'mipi_io_method': '1080',
+            'mipi_image_height': '1080',
+            'mipi_io_method': 'shared_mem',
             'mipi_video_device': LaunchConfiguration('device')
         }.items()
     )
@@ -176,4 +176,4 @@ def generate_launch_description():
             # 启动web展示
             web_node
         ])
- 
+

@@ -1,5 +1,9 @@
 # Changelog for package mono3d_indoor_detection
 
+tros_2.0.2 (2023-12-22)
+------------------
+1. 更新CMakeLists.txt，解决arm平台打包失败问题。
+
 tros_2.0.1 (2023-07-14)
 ------------------
 1. 规范Rdkultra产品名。

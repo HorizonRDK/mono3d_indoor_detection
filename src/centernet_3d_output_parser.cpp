@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <fstream>
 #include "include/centernet_3d_output_parser.h"
 
 #include "dnn/hb_dnn_ext.h"
@@ -525,6 +526,7 @@ int CenterNet3DOutputParser::MaxPoolingRefine(std::vector<BBox3D> &boxes,
     }
 //    feature_out << std::endl;
   }
+  return 0;
 }
 
 void CenterNet3DOutputParser::ParseBBoxes(

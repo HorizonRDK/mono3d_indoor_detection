@@ -42,6 +42,7 @@ find_package(ai_msgs REQUIRED)
 find_package(dnn_node REQUIRED)
 find_package(OpenCV 3.4.5 REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(hbm_img_msgs REQUIRED)
 
 include_directories(include
   ${PROJECT_SOURCE_DIR}
@@ -72,16 +73,7 @@ link_directories(
   ${SYS_ROOT}/usr/lib/hbbpu/
 )
 
-  # BUILD_HBMEM is set in aarch64_toolchainfile.cmake
-if (${BUILD_HBMEM})
-  message("using shared mem")
-  find_package(hbm_img_msgs REQUIRED)
-  add_definitions(-DSHARED_MEM_ENABLED)
-else()
-  message("not using shared mem")
-endif ()
-
-
+add_definitions(-DSHARED_MEM_ENABLED)
 
 add_executable(${PROJECT_NAME}
   src/main.cpp
@@ -100,6 +92,7 @@ ament_target_dependencies(
   rclcpp
   dnn_node
   ai_msgs
+  hbm_img_msgs
   OpenCV
 )
 
@@ -109,14 +102,8 @@ ament_target_dependencies(
   dnn_node
   OpenCV
   sensor_msgs
+  hbm_img_msgs
 )
-
-if (${BUILD_HBMEM})
-  ament_target_dependencies(
-    ${PROJECT_NAME}
-    hbm_img_msgs
-  )
-endif ()
 
 # Install executables
 install(

@@ -1,115 +1,102 @@
-# 功能介绍
+English| [简体中文](./README_cn.md)
 
-mono3d_indoor_detection package是使用hobot_dnn package开发的室内物体3D检测算法示例，在地平线旭日X3开发板上使用3D检测模型和室内数据利用BPU处理器进行模型推理。
-3D检测模型与sensor以及sensor参数相关，在不同sensor不同参数情况下展示出来的效果不一样，因此本package默认并不直接订阅sensors/msg/Image类型的话题，而是通过读取本地图片的形式进行推理，检测出物体的类别以及3D定位信息，将AI信息通过话题发布的同时会将结果渲染在图片上保存在程序运行的result目录。
+# Function Introduction
 
-算法支持的室内物体检测类别如下：
+The mono3d_indoor_detection package is an example of indoor 3D object detection algorithm developed using the hobot_dnn package, which utilizes a 3D detection model and indoor data on the Horizon Sunrise X3 development board for model inference with the BPU processor.
+The 3D detection model is related to sensors and sensor parameters. The performance may vary under different sensor and parameter settings. Therefore, this package does not directly subscribe to topics of type sensors/msg/Image by default, but conducts inference by reading local images to detect object categories and 3D positioning information. The AI information will be published through topics, and the results will also be rendered and saved on images in the 'result' directory during program execution.
+
+The supported indoor object detection categories of the algorithm are as follows:
 
 ```
-1. 充电座
-2. 垃圾桶
-3. 拖鞋
+1. Charging base
+2. Trash can
+3. Slipper
 ```
-每个类别包含长、宽、高、转向以及深度等信息。物体的长、宽、高对应于六面体的长、宽、高，深度是指摄像机到物体的距离。上面参数单位为毫米。转向是指物体相对于相机的朝向，单位弧度，取值范围为：-pi ~ pi（单位：rad），表示在照相机坐标系下物体前进方向与相机坐标系x轴的夹角。
+Each category includes information such as length, width, height, rotation, and depth. The length, width, and height of an object correspond to the dimensions of a hexahedron, and the depth refers to the distance from the camera to the object. The units for the parameters above are in millimeters. Rotation represents the orientation of an object relative to the camera in radians, with a range of -pi to pi, indicating the angle between the forward direction of the object in the camera coordinate system and the x-axis of the camera coordinate system.
 
-package对外发布包含3D检测信息的AI Msg，用户可以订阅发布的AI Msg用于应用开发。
-完整的AI Msg描述如下所示：
+The package releases AI Msg containing 3D detection information for external use, and users can subscribe to the published AI Msg for application development.
+The detailed description of the AI Msg is as follows:
 
 ````
-# 目标消息
+# Target Message
 
-# 目标类型名称，如：充电座、垃圾桶、拖鞋
-# charging_base/trash_can/slipper
+# Target type name, such as: charging_base/trash_can/slipper
 string type
 
-# 目标跟踪ID号，暂时为0
+# Tracking ID of the target, currently set as 0
 uint64 track_id
 
-# 检测框，3D检测顶点信息使用points描述，见下“关键点”描述
+# Detection box, 3D detection vertex information described using points, see "Key Points" section below
 Roi[] rois
 
-# 属性信息，attributes包括 type 和 value 字段。
+# Attribute information, attributes include the 'type' and 'value' fields.
 Attribute[] attributes
-Attribute[]数组包括以下信息：
-type    description
-length   物体长度
-width    物体宽度
-height   物体高度
-depth    物体深度
-rotation 物体相对于相机的朝向
-score    物体类别的置信度，越接近1，说明置信度越高
-x        物体在相机坐标系的x坐标
-y        物体在相机坐标系的y坐标
-z        物体在相机坐标系的z坐标
+The Attribute[] array includes the following information:
+type       description
+length     Object length
+width      Object width
+height     Object height
+depth      Object depth
+rotation   Object orientation relative to the camera
+score      Confidence score of the object category, closer to 1 indicates higher confidence
+x          x-coordinate of the object in the camera coordinate system
+y          y-coordinate of the object in the camera coordinate system
+z          z-coordinate of the object in the camera coordinate system
 
-# 六面体角点，三维物体在图片占据的空间用六面体描述，六面体包含8个顶点，
-8个顶点的顺序如下表示，每个顶点包含在图片的x，y坐标，
-左面的六面体表示背对相机，右面的六面体表示面对相机
+# Hexahedral corner points, the spatial occupation of a three-dimensional object in the image is described by a hexahedron, which includes 8 vertices.
+The order of the 8 vertices is as follows, each vertex contains the x, y coordinates on the image.
+The left hexahedron indicates facing away from the camera, and the right hexahedron indicates facing the camera
       4----------5    6----------7
      /|         /|   /|         /|
-    / |        / |  / |        / |
-   /  |       /  | /  |       /  |
-  7---|------6   |5---|------4   |
-  |   |      |   ||   |      |   |
-  |   |      |   ||   |      |   |
-  |   0------|---1|   2------|---3
-  |  /       |  / |  /       |  /
-  | /     ^  | /  | /     v  | /
-  |/         |/   |/         |/
-  3----------2    1----------0
+    / |        / |  / |        / |```
 Point[] points
 
-# 跟踪目标抓拍图、特征、特征的底库检索结果信息，为空
+# Track target capture images, features, and feature library retrieval results are empty
 Capture[] captures
 ````
 
-# 编译
+# Compilation
 
-## 依赖库
+## Dependencies
 
-
-ros package：
+ROS packages:
 
 - dnn_node
 - ai_msgs
 - OpenCV
 
-dnn_node是在地平线旭日X3开发板上利用BPU处理器进行模型推理的package，定义在hobot_dnn中。
+dnn_node is a package that performs model inference using the BPU processor on the Horizon X3 development board and is defined in hobot_dnn.
 
-ai_msgs为自定义的消息格式，用于算法模型推理后，发布推理结果，ai_msgs package定义在hobot_msgs中。
+ai_msgs is a custom message format used to publish inference results after algorithm model inference, and the ai_msgs package is defined in hobot_msgs.
 
-OpenCV用于图像处理。
+OpenCV is used for image processing.
 
-## 开发环境
+## Development Environment
 
-- 编程语言: C/C++
-- 开发平台: X3/X86
-- 系统版本：Ubuntu 20.0.4
-- 编译工具链:Linux GCC 9.3.0/Linaro GCC 9.3.0
+- Programming Language: C/C++
+- Development Platform: X3/X86
+- System Version: Ubuntu 20.0.4
+- Compilation Toolchain: Linux GCC 9.3.0 / Linaro GCC 9.3.0
 
-## 编译
+## Compilation
 
- 支持在X3 Ubuntu系统上编译和在PC上使用docker交叉编译两种方式。
+Supports compiling on X3 Ubuntu system and cross-compiling using docker on a PC.
 
-### Ubuntu板端编译X3版本
+### Compilation for X3 on Ubuntu Board
 
-1. 编译环境确认 
-   - 板端已安装X3 Ubuntu系统。
-   - 当前编译终端已设置TogetherROS环境变量：`source PATH/setup.bash`。其中PATH为TogetherROS的安装路径。
-   - 已安装ROS2编译工具colcon，安装命令：`pip install -U colcon-common-extensions`
-2. 编译
+1. Compile Environment Verification
+   - X3 Ubuntu system is installed on the board.
+   - The current compilation terminal has set the TogetherROS environment variable: `source PATH/setup.bash`. Here, PATH is the installation path of TogetherROS.
+   - ROS2 compilation tool colcon is installed, installation command: `pip install -U colcon-common-extensions`
+2. Compilation## Cross-compile X3 version with Docker
 
-   - 编译命令：`colcon build --packages-select mono3d_indoor_detection`
+1. Verify the compilation environment
 
-### Docker交叉编译X3版本
+   - Compile in Docker with TogetherROS already installed. For Docker installation, cross-compilation instructions, TogetherROS compilation and deployment instructions, refer to the README.md in the robot development platform robot_dev_config repository.
 
-1. 编译环境确认
+2. Compilation
 
-   - 在docker中编译，并且docker中已经安装好TogetherROS。docker安装、交叉编译说明、TogetherROS编译和部署说明详见机器人开发平台robot_dev_config repo中的README.md。
-
-2. 编译
-
-   - 编译命令：
+   - Compilation command:
 
    ```
    export TARGET_ARCH=aarch64
@@ -119,100 +106,95 @@ OpenCV用于图像处理。
    colcon build --packages-select mono3d_indoor_detection \
       --merge-install \
       --cmake-force-configure \
-      --cmake-args \
+      --cmmake-args \
       --no-warn-unused-cli \
       -DCMAKE_TOOLCHAIN_FILE=`pwd`/robot_dev_config/aarch64_toolchainfile.cmake
    ```
 
-### X86 Ubuntu系统上编译 X86版本
+## Compile X86 version on X86 Ubuntu system
 
-1. 编译环境确认
+1. Verify the compilation environment
 
-   - x86 ubuntu版本: ubuntu20.04
+   - X86 Ubuntu version: ubuntu20.04
 
-2. 编译
+2. Compilation
 
-   - 编译命令：
+   - Compilation command:
 
    ```
-   colcon build --packages-select mono3d_indoor_detection  \
+   colcon build --packages-select mono3d_indoor_detection \
       --merge-install \
       --cmake-args \
       -DPLATFORM_X86=ON \
       -DTHIRD_PARTY=`pwd`/../sysroot_docker \
    ```
 
-## 注意事项
+## Notes
 
-# 使用介绍
+# Instructions
 
-## 依赖
+## Dependencies- mono3d_indoor_detection package: Publishes 3D detection information
 
-- mono3d_indoor_detection package：发布3D检测信息
+## Parameters
 
-## 参数
-
-| 参数名                 | 类型        | 解释                                        | 是否必须 | 支持的配置           | 默认值                        |
-| ---------------------- | ----------- | ------------------------------------------- | -------- | -------------------- | ----------------------------- |
-| config_file_path | std::string | 推理使用的配置文件路径，内含模型文件               | 否       | 根据实际路径配置 | ./config       |
-| feed_image | std::string | 推理使用的图片 | 否 | 根据实际路径配置 | "" |
-| ai_msg_pub_topic_name  | std::string | 发布包含3D检测结果的AI消息的topic名 | 否      | 根据实际部署环境配置 | /ai_msg_3d_detection |
-| dump_render_img  | int | 是否进行渲染，0：否；1：是 | 否      | 0/1 | 0 |
-| shared_mem  | int | 是否使用shared_mem模式订阅图片，0：否；1：是 | 否      | 0/1 | 0 |
+| Parameter Name        | Type        | Description                                 | Required | Supported Configuration | Default Value |
+| ---------------------- | ----------- | ------------------------------------------- | -------- | ----------------------- | ------------- |
+| config_file_path | std::string | Path of the configuration file used for inference, including model files | No | Configure according to actual path | ./config |
+| feed_image | std::string | Image used for inference | No | Configure according to actual path | "" |
+| ai_msg_pub_topic_name  | std::string | Topic name for publishing AI messages containing 3D detection results | No | Configure according to actual deployment environment | /ai_msg_3d_detection |
+| dump_render_img  | int | Whether to render, 0: No, 1: Yes | No | 0/1 | 0 |
+| shared_mem  | int | Whether to use shared memory mode for subscribing images, 0: No, 1: Yes | No | 0/1 | 0 |
 
 
-## 运行
+## Run
 
-编译成功后，将生成的install路径拷贝到地平线旭日X3开发板上（如果是在X3上编译，忽略拷贝步骤），并执行如下命令运行：
+After successful compilation, copy the generated install path to the Horizon X3 development board (if compiling on X3, ignore the copying step), and execute the following command to run:
 
 ### **X3 Ubuntu**
 
 
-**使用本地图片作为输入，并保存渲染后的图片**
+**Using local images as input and saving the rendered images**
 
 ```
 export COLCON_CURRENT_PREFIX=./install
 source ./install/setup.bash
-# config中为示例使用的模型和图片，根据实际安装路径进行拷贝
-# 如果是板端编译（无--merge-install编译选项），拷贝命令为cp -r install/PKG_NAME/lib/PKG_NAME/config/ .，其中PKG_NAME为具体的package名。
+# Copy according to the actual installation path, using the model and image in the configuration as an example
+# If compiling on board side (without --merge-install compilation option), the copy command is cp -r install/PKG_NAME/lib/PKG_NAME/config/ ., where PKG_NAME is the specific package name.
 cp -r install/lib/mono3d_indoor_detection/config/ .
 
-# 启动3D检测 package
+# Launch the 3D detection package
 ros2 launch mono3d_indoor_detection mono3d_indoor_detection.launch.py 
 
 ```
 
-**订阅hobot_image_publisher发布本地图片，web端展示**
+**Subscribe to hobot_image_publisher to publish local images for web display**
 
 ```
 export COLCON_CURRENT_PREFIX=./install
 source ./install/setup.bash
-# config中为示例使用的模型和图片，根据实际安装路径进行拷贝
+# Copy according to the actual installation path, using the model and image in the configuration as an example
 cp -r install/lib/mono3d_indoor_detection/config/ .
 
 export CAM_TYPE=fb
 
-# 启动3D检测 package
+# Launch the 3D detection package
 ros2 launch mono3d_indoor_detection mono3d_indoor_detection_pipeline.launch.py
 
 ```
 
-**订阅MIPI摄像头发布图片，web端展示**
-
-```
+**Subscribe to MIPI camera to publish images for web display**```
 export COLCON_CURRENT_PREFIX=./install
 source ./install/setup.bash
-# config中为示例使用的模型和图片，根据实际安装路径进行拷贝
+# Copy models and images used in config according to actual installation path
 cp -r install/lib/mono3d_indoor_detection/config/ .
 
-# 默认使用F37摄像头
+# Default to using F37 camera
 export CAM_TYPE=mipi
 
-# 启动3D检测 package
+# Launch the 3D detection package
 ros2 launch mono3d_indoor_detection mono3d_indoor_detection_pipeline.launch.py
 
 ```
-
 
 ### **X3 Linux**
 
@@ -220,10 +202,10 @@ ros2 launch mono3d_indoor_detection mono3d_indoor_detection_pipeline.launch.py
 export ROS_LOG_DIR=/userdata/
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./install/lib/
 
-# config中为示例使用的模型，根据实际安装路径进行拷贝
+# Copy models used in config according to actual installation path
 cp -r install/lib/mono3d_indoor_detection/config/ .
 
-# 启动3D检测node
+# Launch the 3D detection node
 ./install/lib/mono3d_indoor_detection/mono3d_indoor_detection --ros-args -p feed_image:=./config/images/3d_detection.png -p dump_render_img:=1
 
 ```
@@ -234,21 +216,21 @@ cp -r install/lib/mono3d_indoor_detection/config/ .
 export COLCON_CURRENT_PREFIX=./install
 source ./install/setup.bash
 
-# config中为示例使用的模型，根据实际安装路径进行拷贝
+# Copy models used in config according to actual installation path
 cp -r install/lib/mono3d_indoor_detection/config/ .
 
-# 启动3D检测node
+# Launch the 3D detection node
 ./install/lib/mono3d_indoor_detection/mono3d_indoor_detection --ros-args -p feed_image:=./config/images/3d_detection.png -p dump_render_img:=1
 
 ```
 
-# 结果分析
-当 mono3d_indoor_detection处理完一帧图片数据后会在控制台打印出处理结果：
-## X3结果展示
+# Results Analysis
+After mono3d_indoor_detection processes a frame of image data, it will print the processing result on the console:
+## X3 Result Display
 
 ```
 [INFO] [1654858490.168592166] [mono3d_detection]: target type: trash_can
-[INFO] [1654858490.168644750] [mono3d_detection]: target type: width, value: 236.816406
+```[INFO] [1654858490.168644750] [mono3d_detection]: target type: width, value: 236.816406
 [INFO] [1654858490.168704333] [mono3d_detection]: target type: height, value: 305.664062
 [INFO] [1654858490.168759584] [mono3d_detection]: target type: length, value: 224.182129
 [INFO] [1654858490.168812334] [mono3d_detection]: target type: rotation, value: -1571.989179
@@ -267,13 +249,10 @@ cp -r install/lib/mono3d_indoor_detection/config/ .
 [INFO] [1654858490.169517505] [mono3d_detection]: target type: z, value: 1088.358164
 [INFO] [1654858490.169566839] [mono3d_detection]: target type: depth, value: 1088.358164
 [INFO] [1654858490.169616464] [mono3d_detection]: target type: score, value: 0.875521
-```
-以上log截取了一帧的处理结果，结果显示，订阅到的ai msg中的target type即分类结果为trash_can，
-同时也给出了trash_can的三维和距离以及旋转角度信息。
 
-示例中读取本地图片推理的结果会渲染到图片上，并且保存在当前目录的result目录下。
+The above log snippet captures the processing results of a frame, indicating that the target type received in the AI message is "trash_can",
+providing three-dimensional information, distance, and rotation angle for the trash can.
 
+In the example, the result of inference on a locally read image is rendered on the image and saved in the "result" directory in the current path.
 
-
-
-# 常见问题
+# Frequently Asked Questions

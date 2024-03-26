@@ -17,10 +17,11 @@ Each category includes information such as length, width, height, rotation, and 
 The package releases AI Msg containing 3D detection information for external use, and users can subscribe to the published AI Msg for application development.
 The detailed description of the AI Msg is as follows:
 
-````
+```
 # Target Message
 
-# Target type name, such as: charging_base/trash_can/slipper
+# Target type name, such as:Charging dock, trash can, slippers
+# charging_base/trash_can/slipper
 string type
 
 # Tracking ID of the target, currently set as 0
@@ -48,7 +49,16 @@ The order of the 8 vertices is as follows, each vertex contains the x, y coordin
 The left hexahedron indicates facing away from the camera, and the right hexahedron indicates facing the camera
       4----------5    6----------7
      /|         /|   /|         /|
-    / |        / |  / |        / |```
+    / |        / |  / |        / |
+   /  |       /  | /  |       /  |
+  7---|------6   |5---|------4   |
+  |   |      |   ||   |      |   |
+  |   |      |   ||   |      |   |
+  |   0------|---1|   2------|---3
+  |  /       |  / |  /       |  /
+  | /     ^  | /  | /     v  | /
+  |/         |/   |/         |/
+  3----------2    1----------0
 Point[] points
 
 # Track target capture images, features, and feature library retrieval results are empty
@@ -88,7 +98,10 @@ Supports compiling on X3 Ubuntu system and cross-compiling using docker on a PC.
    - X3 Ubuntu system is installed on the board.
    - The current compilation terminal has set the TogetherROS environment variable: `source PATH/setup.bash`. Here, PATH is the installation path of TogetherROS.
    - ROS2 compilation tool colcon is installed, installation command: `pip install -U colcon-common-extensions`
-2. Compilation## Cross-compile X3 version with Docker
+2. Compilation
+   - Compilation command：`colcon build --packages-select mono3d_indoor_detection`
+   
+## Cross-compile X3 version with Docker
 
 1. Verify the compilation environment
 
@@ -133,7 +146,8 @@ Supports compiling on X3 Ubuntu system and cross-compiling using docker on a PC.
 
 # Instructions
 
-## Dependencies- mono3d_indoor_detection package: Publishes 3D detection information
+## Dependencies
+- mono3d_indoor_detection package: Publishes 3D detection information
 
 ## Parameters
 
@@ -182,7 +196,8 @@ ros2 launch mono3d_indoor_detection mono3d_indoor_detection_pipeline.launch.py
 
 ```
 
-**Subscribe to MIPI camera to publish images for web display**```
+**Subscribe to MIPI camera to publish images for web display**
+```
 export COLCON_CURRENT_PREFIX=./install
 source ./install/setup.bash
 # Copy models and images used in config according to actual installation path
@@ -230,7 +245,7 @@ After mono3d_indoor_detection processes a frame of image data, it will print the
 
 ```
 [INFO] [1654858490.168592166] [mono3d_detection]: target type: trash_can
-```[INFO] [1654858490.168644750] [mono3d_detection]: target type: width, value: 236.816406
+[INFO] [1654858490.168644750] [mono3d_detection]: target type: width, value: 236.816406
 [INFO] [1654858490.168704333] [mono3d_detection]: target type: height, value: 305.664062
 [INFO] [1654858490.168759584] [mono3d_detection]: target type: length, value: 224.182129
 [INFO] [1654858490.168812334] [mono3d_detection]: target type: rotation, value: -1571.989179
@@ -249,7 +264,7 @@ After mono3d_indoor_detection processes a frame of image data, it will print the
 [INFO] [1654858490.169517505] [mono3d_detection]: target type: z, value: 1088.358164
 [INFO] [1654858490.169566839] [mono3d_detection]: target type: depth, value: 1088.358164
 [INFO] [1654858490.169616464] [mono3d_detection]: target type: score, value: 0.875521
-
+```
 The above log snippet captures the processing results of a frame, indicating that the target type received in the AI message is "trash_can",
 providing three-dimensional information, distance, and rotation angle for the trash can.
 

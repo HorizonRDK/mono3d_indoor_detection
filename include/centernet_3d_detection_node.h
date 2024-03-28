@@ -17,18 +17,22 @@
 #include <string>
 #include <vector>
 
+#include "opencv2/core/mat.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/imgproc.hpp"
+
 #include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/image.hpp"
 #ifdef CV_BRIDGE_PKG_ENABLED
 #include "cv_bridge/cv_bridge.h"
 #endif
 #include "ai_msgs/msg/perception_targets.hpp"
 #include "dnn_node/dnn_node.h"
-#include "include/centernet_3d_output_parser.h"
-#include "include/image_utils.h"
-#include "sensor_msgs/msg/image.hpp"
 #ifdef SHARED_MEM_ENABLED
 #include "hbm_img_msgs/msg/hbm_msg1080_p.hpp"
 #endif
+
+#include "include/centernet_3d_output_parser.h"
 
 #ifndef INCLUDE_CENTERNET3D_DETECTION_NODE_H_
 #define INCLUDE_CENTERNET3D_DETECTION_NODE_H_
@@ -42,7 +46,6 @@ using hobot::dnn_node::ModelTaskType;
 using hobot::dnn_node::TaskId;
 
 using hobot::dnn_node::DNNInput;
-using hobot::dnn_node::DNNResult;
 using hobot::dnn_node::NV12PyramidInput;
 
 struct CenterNet3DOutput : public DnnNodeOutput {
@@ -63,15 +66,11 @@ class CenterNet3DDetectionNode : public DnnNode {
 
  protected:
   int SetNodePara() override;
-  int SetOutputParser() override;
   int PostProcess(const std::shared_ptr<DnnNodeOutput> &outputs) override;
 
  private:
   void GetConfig();
   int Start();
-  int Predict(std::vector<std::shared_ptr<DNNInput>> &inputs,
-              const std::shared_ptr<std::vector<hbDNNRoi>> rois,
-              std::shared_ptr<DnnNodeOutput> dnn_output);
   void RosImgProcess(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
 #ifdef SHARED_MEM_ENABLED
   void SharedMemImgProcess(
@@ -98,6 +97,8 @@ class CenterNet3DDetectionNode : public DnnNode {
   std::mutex frame_stat_mtx_;
   std::string msg_pub_topic_name_ = "ai_msg_3d_detection";
   rclcpp::Publisher<ai_msgs::msg::PerceptionTargets>::SharedPtr msg_publisher_;
+
+  std::shared_ptr<CenterNet3DOutputParser> out_parser_ = nullptr;
 
 #ifdef SHARED_MEM_ENABLED
   rclcpp::Subscription<hbm_img_msgs::msg::HbmMsg1080P>::ConstSharedPtr

@@ -1,5 +1,10 @@
 # Changelog for package mono3d_indoor_detection
 
+tros_2.1.0 (2024-03-28)
+------------------
+1. 新增适配ros2 humble零拷贝。
+2. 适配重构dnn_node。
+
 tros_2.0.2 (2023-12-22)
 ------------------
 1. 更新CMakeLists.txt，解决arm平台打包失败问题。

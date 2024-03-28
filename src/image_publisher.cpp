@@ -21,7 +21,7 @@
 #include <memory>
 
 #include <dirent.h>
-#include "include/image_utils.h"
+#include "dnn_node/util/image_proc.h"
 
 void load_images(const std::string &image_directory,
                  std::vector<std::string> &images) {
@@ -50,7 +50,7 @@ sensor_msgs::msg::Image::SharedPtr create_image(
           std::make_shared<sensor_msgs::msg::Image>();
   cv::Mat nv_12;
   cv::Mat bgr_image = cv::imread(image, cv::IMREAD_COLOR);
-  ImageUtils::BGRToNv12(bgr_image, nv_12);
+  hobot::dnn_node::ImageProc::BGRToNv12(bgr_image, nv_12);
   out_img->encoding = "nv12";
   out_img->width = nv_12.cols;
   out_img->height = nv_12.rows * 2 / 3;

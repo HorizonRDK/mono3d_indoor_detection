@@ -78,13 +78,11 @@ add_definitions(-DSHARED_MEM_ENABLED)
 add_executable(${PROJECT_NAME}
   src/main.cpp
   src/centernet_3d_detection_node.cpp
-  src/image_utils.cpp
   src/centernet_3d_output_parser.cpp
 )
 
 add_executable(image_publisher
-        src/image_publisher.cpp
-        src/image_utils.cpp
+  src/image_publisher.cpp
 )
 
 ament_target_dependencies(

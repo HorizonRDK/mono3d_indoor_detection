@@ -21,16 +21,15 @@
 #include <string>
 #include <vector>
 
-#include "dnn_node/dnn_node.h"
-#include "include/image_utils.h"
-#include "rclcpp/rclcpp.hpp"
 #include <sys/stat.h>
 #ifdef CV_BRIDGE_PKG_ENABLED
 #include <cv_bridge/cv_bridge.h>
 #endif
 
-using hobot::easy_dnn::OutputDescription;
-using hobot::easy_dnn::OutputParser;
+#include "rclcpp/rclcpp.hpp"
+
+#include "dnn_node/dnn_node.h"
+#include "dnn_node/util/image_proc.h"
 
 CenterNet3DDetectionNode::CenterNet3DDetectionNode(const std::string &node_name,
                                      const NodeOptions &options)
@@ -55,6 +54,8 @@ CenterNet3DDetectionNode::CenterNet3DDetectionNode(const std::string &node_name,
   model_file_name_ = config_file_path_ + "/centernet.hbm";
 
   mkdir("./result/", 666);
+
+  out_parser_ = std::make_shared<CenterNet3DOutputParser>(config_file_path_);
 
   std::stringstream ss;
   ss << "Parameter:"
@@ -145,43 +146,6 @@ int CenterNet3DDetectionNode::SetNodePara() {
   return 0;
 }
 
-int CenterNet3DDetectionNode::SetOutputParser() {
-  // set output parser
-  auto model_manage = GetModel();
-  if (!model_manage || !dnn_node_para_ptr_) {
-    RCLCPP_ERROR(rclcpp::get_logger("mono3d_indoor_detection"),
-                 "Invalid model");
-    return -1;
-  }
-
-  if (model_manage->GetOutputCount() < model_output_count_) {
-    RCLCPP_ERROR(rclcpp::get_logger("mono3d_indoor_detection"),
-                 "Error! Model %s output count is %d, unmatch with count %d",
-                 dnn_node_para_ptr_->model_name.c_str(),
-                 model_manage->GetOutputCount(), model_output_count_);
-    return -1;
-  }
-
-  for (int i = 0; i < output_index_; ++i) {
-    std::shared_ptr<OutputParser> assist_parser =
-        std::make_shared<CenterNet3DAssistParser>();
-    model_manage->SetOutputParser(i, assist_parser);
-  }
-  // set 3D paser
-  auto output_desc = std::make_shared<OutputDescription>(
-      model_manage, output_index_, "3D_branch");
-  for (int i = 0; i < output_index_; ++i) {
-    output_desc->GetDependencies().push_back(i);
-  }
-  output_desc->SetType("3D");
-  model_manage->SetOutputDescription(output_desc);
-  std::shared_ptr<OutputParser> out_parser =
-      std::make_shared<CenterNet3DOutputParser>(config_file_path_);
-  model_manage->SetOutputParser(output_index_, out_parser);
-
-  return 0;
-}
-
 #define CV_DRAW_LINE(p0, p1) \
   cv::line(image, cv::Point(points[p0][0], points[p0][1]), \
   cv::Point(points[p1][0], points[p1][1]), \
@@ -240,71 +204,6 @@ void Render3DBox(const BBox3D &box, cv::Mat &image) {
   }
 }
 
-// 使用发布的msg进行渲染
-void Render3DBox(const ai_msgs::msg::PerceptionTargets::UniquePtr &pub_data, cv::Mat &image) {
-  auto draw_line = [&image](const ai_msgs::msg::Point& points, size_t p1, size_t p2){
-    cv::line(image, cv::Point(points.point.at(p1).x, points.point.at(p1).y),
-            cv::Point(points.point.at(p2).x, points.point.at(p2).y),
-            CV_RGB(0, 255, 0), 2);
-  };
-
-  auto put_text = [&image](const std::string& text, int px, int py, int& offset) {
-    double fontScale = 3.0l;
-    int thickness = 3u, baseline;
-    cv::Size text_size = cv::getTextSize(text, cv::HersheyFonts::FONT_HERSHEY_PLAIN, fontScale, thickness, &baseline);
-    cv::Point point(px, py);
-    point.y += offset;
-    cv::Rect rect(point.x, point.y,
-                  text_size.width, text_size.height);
-    point.y += text_size.height;
-    offset += text_size.height * 1.2;
-    cv::putText(image, text, point,
-      cv::HersheyFonts::FONT_HERSHEY_PLAIN,
-      fontScale, CV_RGB(0, 255, 128), thickness);
-  };
-
-  for (const auto& target : pub_data->targets) {
-    std::string score{""};
-    float rotation = 0;
-    for (const auto& attribute : target.attributes) {
-      if (attribute.type == "score") {
-        score = std::to_string(attribute.value);
-      }
-      if (attribute.type == "rotation") {
-        rotation = attribute.value;
-      }
-    }
-
-    for (const auto& point : target.points) {
-      if ("corners" != point.type) {
-        continue;
-      }
-      
-      draw_line(point, 0, 1);
-      draw_line(point, 0, 3);
-      draw_line(point, 0, 4);
-      draw_line(point, 1, 2);
-      draw_line(point, 1, 5);
-      draw_line(point, 2, 3);
-      draw_line(point, 2, 6);
-      draw_line(point, 3, 7);
-      draw_line(point, 4, 5);
-      draw_line(point, 4, 7);
-      draw_line(point, 5, 6);
-      draw_line(point, 6, 7);
-      
-      int offset = 0;
-      if (-M_PI_2 <= rotation || rotation <= M_PI_2) {
-        put_text(target.type, point.point[7].x, point.point[7].y, offset);
-        put_text(score, point.point[7].x, point.point[7].y, offset);
-      } else {
-        put_text(target.type, point.point[6].x, point.point[6].y, offset);
-        put_text(score, point.point[6].x, point.point[6].y, offset);
-      }
-    }
-  }
-}
-
 int CenterNet3DDetectionNode::PostProcess(
     const std::shared_ptr<DnnNodeOutput> &node_output) {
   if (!msg_publisher_) {
@@ -331,14 +230,18 @@ int CenterNet3DDetectionNode::PostProcess(
                 ss.str().c_str());
   }
 
-  const auto &outputs = node_output->outputs;
-  RCLCPP_DEBUG(rclcpp::get_logger("mono3d_indoor_detection"), "outputs size: %d",
-              outputs.size());
-  if (outputs.empty() ||
-      static_cast<int32_t>(outputs.size()) < model_output_count_) {
+  if (centernet_3d_output->output_tensors.empty() ||
+      static_cast<int32_t>(centernet_3d_output->output_tensors.size()) < model_output_count_) {
     RCLCPP_ERROR(rclcpp::get_logger("mono3d_indoor_detection"), "Invalid outputs");
     return -1;
   }
+
+  // 1. 进行模型向量后处理解析
+  std::shared_ptr<CenterNet3DDetResult> det_result = std::make_shared<CenterNet3DDetResult>();
+  int ret = out_parser_->PostProcess(centernet_3d_output->output_tensors, det_result->boxes);
+  RCLCPP_DEBUG(rclcpp::get_logger("mono3d_indoor_detection"), "parser results size: %d", det_result->boxes.size());
+
+  // 2. 发布智能结果话题消息
   int smart_fps = 0;
   {
     auto tp_now = std::chrono::system_clock::now();
@@ -363,8 +266,6 @@ int CenterNet3DDetectionNode::PostProcess(
   }
 
   pub_data->set__fps(smart_fps);
-  auto *det_result =
-      dynamic_cast<CenterNet3DDetResult *>(outputs[output_index_].get());
   if (!det_result) {
     RCLCPP_INFO(rclcpp::get_logger("mono3d_indoor_detection"), "invalid cast");
   } else {
@@ -499,31 +400,20 @@ int CenterNet3DDetectionNode::PostProcess(
     }
 
     pub_data->targets = std::move(targets);
-
-    // 使用算法输出进行渲染
-    // if (!centernet_3d_output->image_name_.empty()) {
-    //   auto img_bgr = cv::imread(centernet_3d_output->image_name_);
-    //   for(auto &box : det_result->boxes) {
-    //     Render3DBox(box, img_bgr);
-    //   }
-    //   std::string::size_type iPos =
-    //           centernet_3d_output->image_name_.find_last_of('/') + 1;
-    //   std::string filename =
-    //           centernet_3d_output->image_name_.substr(
-    //                   iPos, centernet_3d_output->image_name_.length() - iPos);
-    //   cv::imwrite("./result/" + filename, img_bgr);
-    // }
   }
 
   clock_gettime(CLOCK_REALTIME, &time_start);
   perf.stamp_end.sec = time_start.tv_sec;
   perf.stamp_end.nanosec = time_start.tv_nsec;
   pub_data->perfs.emplace_back(perf);
+  msg_publisher_->publish(std::move(pub_data));
 
-  // 使用发布的msg进行渲染
+  // 3. 使用算法输出进行渲染
   if (dump_render_img_ && centernet_3d_output->mat_) {
     cv::Mat img_bgr = *centernet_3d_output->mat_;
-    Render3DBox(pub_data, img_bgr);
+    for(auto &box : det_result->boxes) {
+      Render3DBox(box, img_bgr);
+    }
     std::string filename = "./result/";
     if (centernet_3d_output->image_msg_header_) {
       filename += centernet_3d_output->image_msg_header_->frame_id + "_" +
@@ -531,18 +421,12 @@ int CenterNet3DDetectionNode::PostProcess(
                   std::to_string(centernet_3d_output->image_msg_header_->stamp.sec);
     }
     filename += ".jpeg";
+    RCLCPP_WARN(rclcpp::get_logger("mono3d_detection"),
+            "dump render image succeed: %s", filename.c_str());
     cv::imwrite(filename, img_bgr);
   }
-  
-  msg_publisher_->publish(std::move(pub_data));
-  return 0;
-}
 
-int CenterNet3DDetectionNode::Predict(
-    std::vector<std::shared_ptr<DNNInput>> &inputs,
-    const std::shared_ptr<std::vector<hbDNNRoi>> rois,
-    std::shared_ptr<DnnNodeOutput> dnn_output) {
-  return Run(inputs, dnn_output, rois, false);
+  return 0;
 }
 
 void CenterNet3DDetectionNode::RosImgProcess(
@@ -566,7 +450,7 @@ void CenterNet3DDetectionNode::RosImgProcess(
 
   // 1. 将图片处理成模型输入数据类型DNNInput
   // 使用图片生成pym，NV12PyramidInput为DNNInput的子类
-  std::shared_ptr<hobot::easy_dnn::NV12PyramidInput> pyramid = nullptr;
+  std::shared_ptr<hobot::dnn_node::NV12PyramidInput> pyramid = nullptr;
   if ("rgb8" == img_msg->encoding) {
 #ifdef CV_BRIDGE_PKG_ENABLED
     auto cv_img =
@@ -579,17 +463,21 @@ void CenterNet3DDetectionNode::RosImgProcess(
       RCLCPP_DEBUG(rclcpp::get_logger("mono3d_indoor_detection"),
                    "after cvtColorForDisplay cost ms: %d", interval);
     }
-
-    pyramid = ImageUtils::GetNV12Pyramid(cv_img->image, model_input_height_,
-                                         model_input_width_);
+    pyramid = hobot::dnn_node::ImageProc::GetNV12PyramidFromBGRImg(
+        cv_img->image, 
+        model_input_height_,
+        model_input_width_);
 #else
     RCLCPP_ERROR(rclcpp::get_logger("mono3d_indoor_detection"),
                  "Unsupport cv bridge");
 #endif
   } else if ("nv12" == img_msg->encoding) {
-    pyramid = ImageUtils::GetNV12PyramidFromNV12Img(
-        reinterpret_cast<const char *>(img_msg->data.data()), img_msg->height,
-        img_msg->width, model_input_height_, model_input_width_);
+    pyramid = hobot::dnn_node::ImageProc::GetNV12PyramidFromNV12Img(
+        reinterpret_cast<const char *>(img_msg->data.data()), 
+        img_msg->height,
+        img_msg->width, 
+        model_input_height_, 
+        model_input_width_);
   }
 
   if (!pyramid) {
@@ -629,7 +517,7 @@ void CenterNet3DDetectionNode::RosImgProcess(
   }
 
   // 3. 开始预测
-  uint32_t ret = Predict(inputs, nullptr, dnn_output);
+  uint32_t ret = Run(inputs, dnn_output, nullptr, false);
   {
     auto tp_now = std::chrono::system_clock::now();
     auto interval =
@@ -646,17 +534,18 @@ void CenterNet3DDetectionNode::RosImgProcess(
 }
 
 int CenterNet3DDetectionNode::PredictByImage(
-        const std::string &image) {
+        const std::string &image_name) {
   // 1. 将图片处理成模型输入数据类型DNNInput
   // 使用图片生成pym，NV12PyramidInput为DNNInput的子类
-  std::shared_ptr<hobot::easy_dnn::NV12PyramidInput> pyramid = nullptr;
+  std::shared_ptr<hobot::dnn_node::NV12PyramidInput> pyramid = nullptr;
   // bgr img，支持将图片resize到模型输入size
-  pyramid = ImageUtils::GetNV12Pyramid(
-          image, ImageType::BGR,
-          model_input_height_, model_input_width_);
+  pyramid = hobot::dnn_node::ImageProc::GetNV12PyramidFromBGR(
+          image_name,
+          model_input_height_, 
+          model_input_width_);
   if (!pyramid) {
     RCLCPP_ERROR(rclcpp::get_logger("mono3d_indoor_detection"),
-                 "Get Nv12 pym fail with image: %s", image.c_str());
+                 "Get Nv12 pym fail with image: %s", image_name.c_str());
     return -1;
   }
 
@@ -669,16 +558,16 @@ int CenterNet3DDetectionNode::PredictByImage(
   dnn_output->image_msg_header_ = std::make_shared<std_msgs::msg::Header>();
   dnn_output->image_msg_header_->set__frame_id("feedback");
   dnn_output->image_msg_header_->set__stamp(rclcpp::Time());
-  dnn_output->image_name_ = image;
+  dnn_output->image_name_ = image_name;
   // dnn_output->image_msg_header->set__frame_id(std::to_string(img_msg->index));
   // dnn_output->image_msg_header->set__stamp(img_msg->time_stamp);
 
   if (dump_render_img_) {
-    dnn_output->mat_ = std::make_shared<cv::Mat>(cv::imread(image, cv::IMREAD_COLOR));
+    dnn_output->mat_ = std::make_shared<cv::Mat>(cv::imread(image_name, cv::IMREAD_COLOR));
   }
 
   // 3. 开始预测
-  uint32_t ret = Predict(inputs, nullptr, dnn_output);
+  uint32_t ret = Run(inputs, dnn_output, nullptr, false);
   if (ret != 0) {
     RCLCPP_ERROR(rclcpp::get_logger("mono3d_indoor_detection"),
                  "predict img failed!");
@@ -706,12 +595,15 @@ void CenterNet3DDetectionNode::SharedMemImgProcess(
 
   // 1. 将图片处理成模型输入数据类型DNNInput
   // 使用图片生成pym，NV12PyramidInput为DNNInput的子类
-  std::shared_ptr<hobot::easy_dnn::NV12PyramidInput> pyramid = nullptr;
+  std::shared_ptr<hobot::dnn_node::NV12PyramidInput> pyramid = nullptr;
   if ("nv12" ==
       std::string(reinterpret_cast<const char *>(img_msg->encoding.data()))) {
-    pyramid = ImageUtils::GetNV12PyramidFromNV12Img(
-        reinterpret_cast<const char *>(img_msg->data.data()), img_msg->height,
-        img_msg->width, model_input_height_, model_input_width_);
+    pyramid = hobot::dnn_node::ImageProc::GetNV12PyramidFromNV12Img(
+        reinterpret_cast<const char *>(img_msg->data.data()), 
+        img_msg->height,
+        img_msg->width, 
+        model_input_height_, 
+        model_input_width_);
   } else {
     RCLCPP_INFO(rclcpp::get_logger("mono3d_indoor_detection"),
                 "share mem unsupported img encoding: %s", img_msg->encoding);
@@ -751,7 +643,8 @@ void CenterNet3DDetectionNode::SharedMemImgProcess(
   }
 
   // 3. 开始预测
-  int ret = Predict(inputs, nullptr, dnn_output);
+  int ret = Run(inputs, dnn_output, nullptr, false);
+
   {
     auto tp_now = std::chrono::system_clock::now();
     auto interval =

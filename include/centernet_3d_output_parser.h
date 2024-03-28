@@ -15,47 +15,21 @@
 #ifndef DNN_NODE_3D_OUTPUT_PARSER_H
 #define DNN_NODE_3D_OUTPUT_PARSER_H
 
+#include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <iostream>
+
+#include "opencv2/core/mat.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/imgproc.hpp"
 
 #include "dnn_node/dnn_node_data.h"
 
-using hobot::dnn_node::DNNResult;
 using hobot::dnn_node::DNNTensor;
-using hobot::dnn_node::InputDescription;
 using hobot::dnn_node::Model;
-using hobot::dnn_node::MultiBranchOutputParser;
-using hobot::dnn_node::OutputDescription;
-using hobot::dnn_node::OutputParser;
-using hobot::dnn_node::SingleBranchOutputParser;
-
-class CenterNet3DOutputDescription : public OutputDescription {
- public:
-  CenterNet3DOutputDescription(Model *mode, int index, std::string type = "")
-      : OutputDescription(mode, index, type) {}
-  int op_type;
-};
-
-enum class CenterNetBranchOutType {
-  HEATMAP = 0,
-  DEPTH = 1,
-  ROTATION = 2,
-  DIMENSION = 3,
-  LOCATION = 4,
-  WIDTH_HEIGHT = 5,
-  MAX_LAYER
-};
-
-struct CenterNetBranchInfo {
-  CenterNetBranchOutType type;
-  std::string name;
-  std::string box_name;
-  std::unordered_map<int, std::string> labels;
-};
 
 struct BBox {
   inline BBox() {}
@@ -132,41 +106,23 @@ struct BBox3D {
   }
 };
 
-class CenterNet3DDetResult : public DNNResult {
+class CenterNet3DDetResult {
  public:
   std::vector<BBox3D> boxes;
-  void Reset() override { boxes.clear(); }
+  void Reset() { boxes.clear(); }
 };
 
-class CenterNet3DAssistParser : public SingleBranchOutputParser<CenterNet3DDetResult> {
+class CenterNet3DOutputParser {
  public:
-  int32_t Parse(
-      std::shared_ptr<CenterNet3DDetResult>& output,
-      std::vector<std::shared_ptr<InputDescription>>& input_descriptions,
-      std::shared_ptr<OutputDescription>& output_description,
-      std::shared_ptr<DNNTensor>& output_tensor) override {
-    return 0;
+  CenterNet3DOutputParser(const std::string &config_file) {
+    yaml_file_ = config_file + "/centernet.yaml";
   }
-};
 
-class CenterNet3DOutputParser : public MultiBranchOutputParser<CenterNet3DDetResult> {
- public:
-    CenterNet3DOutputParser(const std::string &config_file) {
-      yaml_file_ = config_file + "/centernet.yaml";
-    }
-  int32_t Parse(
-      std::shared_ptr<CenterNet3DDetResult> &output,
-      std::vector<std::shared_ptr<InputDescription>> &input_descriptions,
-      std::shared_ptr<OutputDescription> &output_descriptions,
-      std::shared_ptr<DNNTensor> &output_tensor,
-      std::vector<std::shared_ptr<OutputDescription>> &depend_output_descs,
-      std::vector<std::shared_ptr<DNNTensor>> &depend_output_tensors,
-      std::vector<std::shared_ptr<DNNResult>> &depend_outputs);
-
- private:
   int PostProcess(std::vector<std::shared_ptr<DNNTensor>> &tensors,
                   std::vector<BBox3D> &det_result);
 
+ private:
+ 
   int Parse2DBox(std::shared_ptr<DNNTensor> &output_tensor,
                  std::vector<BBox2D> &dets);
 

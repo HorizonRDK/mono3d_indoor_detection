@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <fstream>
 #include "include/centernet_3d_output_parser.h"
 
+#include <fstream>
+
 #include "dnn/hb_dnn_ext.h"
-#include "include/image_utils.h"
 #include "rclcpp/rclcpp.hpp"
 
 int get_tensor_hwc_index(std::shared_ptr<DNNTensor> tensor, int *h_index,
@@ -33,49 +33,6 @@ int get_tensor_hwc_index(std::shared_ptr<DNNTensor> tensor, int *h_index,
     return -1;
   }
   return 0;
-}
-
-int32_t CenterNet3DOutputParser::Parse(
-    std::shared_ptr<CenterNet3DDetResult> &output,
-    std::vector<std::shared_ptr<InputDescription>> &input_descriptions,
-    std::shared_ptr<OutputDescription> &output_descriptions,
-    std::shared_ptr<DNNTensor> &output_tensor,
-    std::vector<std::shared_ptr<OutputDescription>> &depend_output_descs,
-    std::vector<std::shared_ptr<DNNTensor>> &depend_output_tensors,
-    std::vector<std::shared_ptr<DNNResult>> &depend_outputs) {
-  if (output_descriptions) {
-    RCLCPP_DEBUG(rclcpp::get_logger("3D_detection_parser"),
-                 "type: %s, GetDependencies size: %d",
-                 output_descriptions->GetType().c_str(),
-                 output_descriptions->GetDependencies().size());
-    if (!output_descriptions->GetDependencies().empty()) {
-      RCLCPP_DEBUG(rclcpp::get_logger("3D_detection_parser"),
-                   "Dependencies: %d",
-                   output_descriptions->GetDependencies().front());
-    }
-  }
-  if (depend_output_tensors.size() < 6) {
-    RCLCPP_ERROR(rclcpp::get_logger("3D_detection_parser"),
-                 "depend out tensor size invalid cast");
-    return -1;
-  }
-
-  std::shared_ptr<CenterNet3DDetResult> result;
-  if (!output) {
-    result = std::make_shared<CenterNet3DDetResult>();
-    result->Reset();
-    output = result;
-  } else {
-    result = std::dynamic_pointer_cast<CenterNet3DDetResult>(output);
-    result->Reset();
-  }
-
-  int ret = PostProcess(depend_output_tensors, result->boxes);
-  if (ret != 0) {
-    RCLCPP_INFO(rclcpp::get_logger("3D_detection_parser"),
-                "postprocess return error, code = %d", ret);
-  }
-  return ret;
 }
 
 static inline void ScaleCaliMatrix(std::vector<std::vector<float>> &intrin_mat,
